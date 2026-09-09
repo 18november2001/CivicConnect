@@ -1,0 +1,57 @@
+Constraints, Risk & Forward Engineering
+
+8. Constraints
+
+Scope: The M1 scope is fixed once the baseline is agreed. This keeps the project manageable, but it also means that a stakeholder need could be discovered later that is not covered by the agreed scope. The team accepts this trade-off because an open-ended scope would be difficult to estimate, schedule and defend at a gate review.
+
+Schedule: The project has four milestones with fixed academic deadlines and an internal freeze three days before each submission. If work falls behind, the team has to manage the scope rather than move the deadline. Features can therefore be deferred, but they should be recorded rather than quietly removed.
+
+Cost / Resources: The team has three members and no budget for paid infrastructure or third-party services. Tools therefore need to be free-tier or open-source. This will affect later choices such as hosting, databases and CI runners, and is already an input to FE-03 (Automated Build).
+
+Quality: The PED must meet the required quality standard and every team member must be able to defend the work, not only the person who wrote it. This takes extra time because the artefacts need to be clear to people who did not write them. The team accepts this because technically correct work is still a problem if nobody else can explain or defend it.
+
+Security: Credentials, tokens and real personal information must not be placed in the repository or shared with external AI tools. CivicConnect service-request data is treated as personal information. This means the team must use synthetic data for testing and AI-assisted work during M1 and M2, even though real data might be more convenient. The realism of that synthetic data remains an area to consider under FE-06 (Observability).
+
+9. Forward Engineering Considerations
+10. 
+FE-01 — Testability: The requirements and acceptance criteria written in M1 will affect how easily the system can be tested later. If a requirement cannot be tested clearly, fixing it at M3 could require unnecessary rework. This will influence the testing strategy and tooling selected at M2/M3. The team still needs to identify which NFRs can be automated and which will require manual or UAT verification.
+
+FE-02 — Scalability: The expected number of concurrent requesters, staff and management users will affect the data model and API design at M2. It is cheaper to consider this early than to redesign the system later. This will influence database and hosting choices and whether features such as caching or queues are needed. The current gap is that the expected user and request volumes have not yet been specified.
+
+FE-03 — Automated Build (CI): Automated build and test checks are deliberately deferred at M1 because the technology stack has not yet been selected. The branch protection rules are still set up so that required status checks can be added later without redesigning the governance process. The future CI tool and pipeline will depend on the M2 technology stack and the limits of the available free-tier resources.
+
+FE-04 — Deployment: The team needs to know whether CivicConnect will eventually be expected to run as a live system or whether code and evidence will be enough. This affects whether the project needs a simple environment or a staged setup such as development, staging and production. The hosting platform and environment configuration will be decided at M2/M3 once this expectation is clearer.
+
+FE-05 — Maintainability: Repository conventions and coding practices introduced now will carry into later development. Consistent branch names, pull-request templates and contribution rules make the project easier to maintain, but some coding standards will depend on the language and framework selected at M2. The exact technology choice is therefore still an open dependency.
+
+FE-06 — Observability: CivicConnect needs enough history to show what happened to a service request, including changes made to its status. Thinking about this at M1 matters because the data model is easier to design for audit information before development starts. At M2 the team will need to decide whether this should be handled through an audit-log table, an event log or another approach. It is still unclear whether the client requires a formal audit trail or only basic status history.
+
+FE-07 — Security Posture: The authentication and authorisation approach will affect the data model and API design at M2. Clearly separating requester, staff and management permissions early reduces the chance of access-control problems being built into the system. The team still needs to know whether the client expects single sign-on or third-party authentication, or whether CivicConnect should manage its own accounts.
+
+12. Risk Register
+    
+RSK-001 — Scope creep: Stakeholders may ask for features outside the agreed scope and these could get accepted informally. Probability: Medium. Impact: Medium. Mitigation: log every feature request and check it against the Scope Baseline before any work starts; if something was deferred or excluded earlier, say so instead of quietly bringing it back. Contingency: put the request on the agenda of the next team meeting and, if the team agrees it belongs in scope, run it through the formal change-request process. Owner: Steven.
+
+RSK-002 — Requirement ambiguity: A requirement could be understood differently by the person who wrote it and the person implementing it at M2. Probability: Medium. Impact: High. Mitigation: every FR and NFR should have clear, testable acceptance criteria in the RTM before baseline sign-off, with PR reviews checking that the artefacts remain aligned. Contingency: raise the issue as a whole-document coherence problem before v1.0 sign-off, or open a Change Request if it is found after the baseline. Owner: Masana.
+
+RSK-003 — Single point of knowledge: Only the person who wrote a section may know enough to defend it during the assessment. Probability: Medium. Impact: High. Mitigation: use the required two-reviewer PR process and review the artefacts together so knowledge is shared across the team. Contingency: hold a cross-briefing session before the defence where each member explains a section they did not write. Owner: Team.
+
+RSK-004 — Review availability bottleneck: Because two people other than the author must approve a PR, one team member being unavailable can stop a merge. Probability: Medium. Impact: High. Mitigation: agree to a 24-hour review turnaround and clear outstanding reviews before starting new drafting. Contingency: escalate to the team after 24 hours and to the lecturer if a member remains unreachable for more than 48 hours. Owner: Bathile.
+
+RSK-005 — Cross-artefact dependency delay: Person 3’s risk register, decision log and FE-01–FE-07 considerations all build on Person 1’s Scope Baseline and Person 2’s requirements and RTM. If either of those lands late, the register cannot be finalised and the references in Section 10 (RSK-001 to the Scope Baseline, RSK-002 to the RTM) stay unconfirmed, which blocks the related PRs. Probability: Medium. Impact: High. Mitigation: draft in parallel using the agreed identifier schemes (RSK-nnn, DEC-nnn, FR-nnn/NFR-nnn) and hold a joint cross-check of IDs and references before the internal freeze. Contingency: if an artefact is late, merge in dependency order (baseline artefact first, dependent register second), raise the delay at the next team meeting, and if it is still unresolved after 48 hours, take it to the lecturer. Owner: Mzingeli.
+
+14. Engineering Decision Log
+    
+DEC-001 — Exclude WhatsApp integration from the M1 scope (OOS-01): Context: requests currently arrive through WhatsApp, so stakeholders may expect the system to keep accepting them there. Three options were on the table: (A) integrate WhatsApp directly at M1, (B) keep WhatsApp as a manual triage channel and capture requests in CivicConnect by hand, or (C) exclude the integration and route everything through CivicConnect. The team went with C, recorded as OOS-01 in the Scope Baseline. Rationale: a direct integration adds an external dependency plus security, privacy and integration work the brief does not ask for, and the point of CivicConnect is to replace scattered channels, not keep them alive. Trade-off: requesters have to change how they submit, and staff may still get informal WhatsApp messages for a while that need redirecting. That cost is accepted, since a smaller finished system beats a larger unfinished one. Status: Decided.
+
+DEC-002 — Use synthetic data only for M1–M2 testing and AI-assisted work: Context: the Security constraint bans credentials, tokens and real personal information from the repository and from external AI tools, and service-request data counts as personal information. The team looked at three options: (A) use real anonymised data, (B) use real data on local machines only and never commit it, or (C) use fully synthetic data for all testing and AI-assisted drafting. The team chose C. Rationale: anonymisation is hard to verify, and real data can still leak through a commit, an issue or an AI prompt; once it is in the history it cannot be removed. Trade-off: synthetic data may not reproduce the messiness of real records, so its realism must be reviewed before the M2/M3 testing and deployment decisions (tracked under FE-06). Status: Decided.
+
+DEC-003 — Defer required CI status checks to M3: Branch protection is configured at M1, but requiring status checks before a merge would require a CI pipeline. That pipeline depends on the technology stack selected at M2, so enabling it at M1 would be premature. The team considered enabling a placeholder workflow or waiting until CI exists. The placeholder option was rejected because it would appear to provide automated verification without actually checking the build or tests. The decision is therefore to defer required status checks to M3. The trade-off is that the main branch is protected by human review until CI is introduced, so defects that automated checks could later catch will have to be found through review in the meantime. Re-evaluate this decision once the M2 technology stack is confirmed.
+
+16. Defence Preparation Notes
+    
+Highest-priority risk: RSK-004 is the highest-priority risk because the three-person team needs two approvals for every substantive PR. A single person's unavailability can therefore stop all merges. The team chose to accept this inconvenience rather than weaken the two-reviewer control, because reducing the control when deadlines become difficult would remove an important part of the project's assurance.
+
+Deliberately deferred decision: DEC-003 is a useful example of a decision that was deliberately deferred rather than ignored. The team did not choose a CI tool before the M2 technology stack was known. Branch protection and two-reviewer approval are already active; only the automated status-check requirement is being held back until the CI pipeline exists.
+
+Early shortcut and technical debt: Using synthetic data instead of real service-request data is an acceptable M1 shortcut because real personal information cannot be placed in the repository or shared with external AI tools. The trade-off is that synthetic data may not fully represent the problems that occur with real records. Before later testing or deployment decisions are made, the team will need to make sure the synthetic dataset is realistic enough for the required checks.
