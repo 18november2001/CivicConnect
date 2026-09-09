@@ -32,7 +32,7 @@ Conversation resolution required	Enabled	Ensures review concerns are answered ra
 Force pushes blocked	Enabled	Protects the authenticity of repository history, which is itself controlled evidence
 Branch deletion restricted	Enabled	The main branch cannot be removed or recreated in a way that would conceal history
 Administrator bypass not permitted	Enabled	Applies the rules to every member, including the member who configured them. Without this setting the control is advisory rather than enforced.
-Status checks required	Not enabled at Milestone 1	Continuous Integration implementation falls outside the Milestone 1 boundary. Recorded as DEC-004 in the Engineering Decision Log as a deliberate deferment; the setting is enabled when automated build and test are introduced at Milestone 3.
+Status checks required	Not enabled at Milestone 1	Continuous Integration implementation falls outside the Milestone 1 boundary. Recorded as DEC-003 in the Engineering Decision Log as a deliberate deferment; the setting is enabled when automated build and test are introduced at Milestone 3.
 
 The configuration is demonstrable live in the repository settings.
 
@@ -56,7 +56,7 @@ Typographical or formatting correction with no change of meaning	Pull Request, t
 
 Two approvals rather than one were required for four reasons. A single reviewer is a single point of failure who may miss an error or approve without engaging, whereas a second independent reviewer materially reduces both risks. CivicConnect artefacts are interdependent, so a requirement change affects the Requirements Traceability Matrix, may raise a risk and may contradict a scope boundary, and the author is the person least likely to notice the effect on artefacts they did not write. The Master Project Brief requires every member to understand the complete project rather than only their own tasks, and mandatory review is the mechanism that distributes that understanding across the team. Finally, each merge carries two named engineers who examined the change, which is what makes the baseline defensible rather than merely agreed.
 
-The team recognises a cost in this model. With three members, every Pull Request requires both non-authors, so one member's unavailability blocks all merges. This is recorded as RSK-007 in the Risk Register, mitigated by an agreed review turnaround of twenty-four hours and a working rule that outstanding reviews are completed before new drafting begins. The team accepted the availability cost rather than weakening the control, because a control relaxed under schedule pressure provides no assurance at the point where it matters most.
+The team recognises a cost in this model. With three members, every Pull Request requires both non-authors, so one member's unavailability blocks all merges. This is recorded as RSK-004 in the Risk Register, mitigated by an agreed review turnaround of twenty-four hours and a working rule that outstanding reviews are completed before new drafting begins. The team accepted the availability cost rather than weakening the control, because a control relaxed under schedule pressure provides no assurance at the point where it matters most.
 
 10.4 Team Working Agreement
 
@@ -94,7 +94,7 @@ The team operates the register under the following rules, derived from the Respo
 
 Material AI contributions are recorded in the register, and entries are made before the associated Pull Request is merged rather than reconstructed afterwards. Important AI claims are verified against credible evidence or technical tests; asking the same or another AI tool to confirm its output does not constitute verification. Each member records their own entries, because verification is a personal engineering act and no member can attest that another member verified something. The document owner maintains the register's structure and completeness, while the content of each row belongs to its author.
 
-No credentials, confidential material or inappropriate personal or sensitive data are exposed to external AI systems. For CivicConnect this includes any realistic service-request data containing personal information, since the system will hold reporter identities and request details.
+No credentials, confidential material or inappropriate personal or sensitive data are exposed to external AI systems. For CivicConnect this includes any realistic service-request data containing personal information, since the system will hold reporter identities and request details. This constraint is recorded as decision DEC-002, under which synthetic data is used for all testing and AI-assisted work during Milestones 1 and 2.
 
 AI-assisted content is subject to the same branch and review controls as human-authored work, and to build, test and security controls once construction begins. Reviewers check for a corresponding register entry whenever a Pull Request contains AI-assisted content. Every member must be able to explain, defend and modify any AI-assisted artefact they submit.
 
@@ -173,29 +173,5 @@ Signed
 
 The gate outcome is recorded separately from the assessed mark. Where the team identifies known gaps in the foundation, a conditionally accepted outcome with stated conditions is recorded rather than an unqualified acceptance, in line with the Master Project Brief's position that professional honesty about limitations and residual risk is valued above unsupported claims of completeness.
 
-Content
-SEN381 Project Milestone 1 - Person 1.docx
-
-DOCX
-
-SEN381_Assignment1_Team_Document.docx
-
-DOCX
-
-PDF
-
-SEN381 Project Milestone 1.docx
-
-DOCX
-
-SOFTWARE ENGINEERING 381 - SEN381 ASSIGNMENT 1 Research Foundations for Software Engineering Decisions Assessment type Team research assignment Team size 3 students - same team used for the integrated project Duration 3 days Total marks 50 Submission One concise professional engineering research bri
-
-PASTED
-
-SOFTWARE ENGINEERING 381 - SEN381 CIVICCONNECT PROJECT MILESTONE 1 (M1) Engineering Foundation & Requirements Baseline Team size Exactly 3 students Raw assessment 50 marks Project weighting 15 project marks Shared team artefacts/evidence 30 raw marks Individual presentation 5 raw marks Individual en
-
-PASTED
-
-SOFTWARE ENGINEERING 381 - SEN381 CIVICCONNECT PROJECT MILESTONE 1 (M1) Engineering Foundation & Requirements Baseline Team size Exactly 3 students Raw assessment 50 marks Project weighting 15 project marks Shared team artefacts/evidence 30 raw marks Individual presentation 5 raw marks Individual en
 
 PASTED
