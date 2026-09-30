@@ -112,3 +112,4 @@ node_modules/
 dist/
 coverage/
 *.log
+This does not replace checking the repository history. A secret accidentally committed to Git should be treated as exposed and replaced, rather than assuming that deleting the file from the latest commit is enough.
