@@ -1,0 +1,192 @@
+# 17. Data and Persistence Baseline (Criterion C)
+
+## 17.0 Non-Technical Terminology & Quality Target Review
+To ensure municipal administrators and non-technical stakeholders understand the persistence architecture, key terms are defined below:
+* **Finite State Machine (FSM):** A controlled logic model defining exact stages through which a service ticket moves (Submitted -> Assigned -> In_Progress -> Resolved -> Closed/Rejected). Invalid shortcuts are blocked at the engine level.
+* **Relational Database (PostgreSQL):** A structured system storing data in linked tables, enforcing referential integrity and strict typing.
+* **ACID Transactions:** Guarantees that multi-step operations (advancing status, logging audit records, calculating SLAs) succeed completely or roll back entirely.
+* **Composite B-Tree Index:** A structured shortcut tree across multiple columns preventing full table scans.
+* **Immutable Audit Log:** A write-only ledger recording all ticket events where UPDATE, DELETE, and TRUNCATE privileges are completely revoked.
+* **Single Point of Failure (SPOF):** A component whose failure halts the platform; mitigated via managed connection pooling and replication.
+
+> **Performance Threshold Notice (CHG-004 / NFR-003):** The Milestone 1 numerical latency target (< 1.5s across 10,000 records) is formally **Under Review** pending benchmark validation on target hosting infrastructure. Composite indexing is engineered to guarantee $O(\log N)$ range scans.
+
+---
+
+## 17.1 Persistence Paradigm Selection & Architectural Justification
+To fulfill operational and regulatory traceability, PostgreSQL has been selected as the primary relational persistence store for CivicConnect:
+* **Relational Integrity:** Foreign key constraints (`ON DELETE RESTRICT`) ensure tickets cannot exist without valid citizens, categories, and assigned departments.
+* **ACID Guarantees:** Multi-entity operations execute atomically, preventing partial updates during lifecycle transitions.
+* **Relational Query Complexity (FR-004):** Optimized multi-column filtering across status, suburb, category, and timestamps via composite B-Tree indexes.
+
+---
+
+## 17.2 Core Domain Aggregates & Entity Dictionary
+
+### 1. `users` (Identity & RBAC Core)
+* **Traceability:** NFR-001 (Security Posture)
+
+| Column Name | Data Type | Constraints & Defaults | Engineering & Business Rule |
+| :--- | :--- | :--- | :--- |
+| `user_id` | UUID | PRIMARY KEY, Default: `gen_random_uuid()` | Immutable internal unique user identifier. |
+| `full_name` | VARCHAR(150) | NOT NULL | Registered legal name of citizen or staff member. |
+| `email` | VARCHAR(255) | UNIQUE, NOT NULL | Primary authentication identifier. |
+| `password_hash` | VARCHAR(255) | NOT NULL | Salted cryptographic hash (Argon2id or bcrypt). |
+| `role` | VARCHAR(30) | NOT NULL, CHECK in (`Citizen`, `Staff`, `Supervisor`, `Admin`) | System role governing UI views and route access. |
+| `department` | VARCHAR(50) | NULL, CHECK in (`Roads`, `Water`, `Electricity`, `Refuse`, `Sanitation`) | Operational unit; NULL for citizens. |
+| `created_at` | TIMESTAMPTZ | NOT NULL, Default: `NOW()` | Account registration timestamp in UTC. |
+
+### 2. `request_categories` (Controlled Reference Domain)
+* **Traceability:** FR-001 (Submission Categories), FR-007 (SLA Oversight)
+
+| Column Name | Data Type | Constraints & Defaults | Engineering & Business Rule |
+| :--- | :--- | :--- | :--- |
+| `category_id` | INT | GENERATED ALWAYS AS IDENTITY, PRIMARY KEY | Compact surrogate foreign key for indexing. |
+| `category_name` | VARCHAR(50) | UNIQUE, NOT NULL | Standard domains: Roads, Water, Electricity, Refuse, Sanitation. |
+| `default_sla_hours` | INT | NOT NULL, CHECK (`default_sla_hours > 0`) | Turnaround hours used to derive overdue deadlines. |
+| `is_active` | BOOLEAN | NOT NULL, Default: `TRUE` | Soft-deletion flag to retire categories without breaking FK integrity. |
+
+### 3. `service_requests` (Primary Aggregate Root)
+* **Traceability:** FR-001, FR-002, FR-004, FR-005, FR-006, NFR-003
+
+| Column Name | Data Type | Constraints & Defaults | Engineering & Business Rule |
+| :--- | :--- | :--- | :--- |
+| `request_id` | UUID | PRIMARY KEY, Default: `gen_random_uuid()` | Internal surrogate identifier for relations. |
+| `tracking_code` | VARCHAR(25) | UNIQUE, NOT NULL | Human-readable tracking reference: REQ-YYYYMMDD-XXXX. |
+| `requester_id` | UUID | NOT NULL, REFERENCES `users(user_id)` ON DELETE RESTRICT | Foreign key binding ticket to submitting citizen account. |
+| `category_id` | INT | NOT NULL, REFERENCES `request_categories(category_id)` ON DELETE RESTRICT | Foreign key enforcing valid classification. |
+| `title` | VARCHAR(100) | NOT NULL, CHECK (`char_length(title) >= 5`) | Brief citizen issue summary. |
+| `description` | TEXT | NOT NULL, CHECK (`char_length(description) BETWEEN 20 AND 2000`) | Comprehensive issue description. |
+| `location_address` | VARCHAR(255) | NOT NULL, CHECK (`char_length(location_address) >= 10`) | Street address and physical location description. |
+| `suburb` | VARCHAR(100) | NOT NULL | Administrative district used for staff queue routing. |
+| `status` | VARCHAR(30) | NOT NULL DEFAULT `'Submitted'`, CHECK in (`Submitted`, `Assigned`, `In_Progress`, `Resolved`, `Closed`, `Rejected`) | Current lifecycle state enforced strictly by domain FSM. |
+| `assigned_staff_id` | UUID | NULL, REFERENCES `users(user_id)` ON DELETE SET NULL | Staff member actively responsible for resolution. |
+| `resolution_notes` | TEXT | NULL, CHECK (`resolution_notes IS NULL OR char_length(resolution_notes) >= 20`) | Mandatory explanation entered prior to transition to Resolved. |
+| `rejection_reason` | TEXT | NULL, CHECK (`rejection_reason IS NULL OR char_length(rejection_reason) >= 15`) | Mandatory justification entered prior to transition to Rejected. |
+| `sla_due_at` | TIMESTAMPTZ | NOT NULL | Calculated deadline: `created_at + INTERVAL default_sla_hours`. |
+| `created_at` | TIMESTAMPTZ | NOT NULL, Default: `NOW()` | Submission creation timestamp in UTC. |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, Default: `NOW()` | Last mutation timestamp; used for optimistic concurrency control. |
+
+### 4. `request_timeline_updates` (Public Lifecycle Visibility)
+* **Traceability:** FR-003 (Public Feedback & Lifecycle Timeline)
+
+| Column Name | Data Type | Constraints & Defaults | Engineering & Business Rule |
+| :--- | :--- | :--- | :--- |
+| `update_id` | UUID | PRIMARY KEY, Default: `gen_random_uuid()` | Unique public event identifier. |
+| `request_id` | UUID | NOT NULL, REFERENCES `service_requests(request_id)` ON DELETE CASCADE | Associated service ticket aggregate root. |
+| `status_snapshot` | VARCHAR(30) | NOT NULL | Ticket status at the exact moment of update. |
+| `public_message` | TEXT | NOT NULL | Citizen-facing communication text; internal notes scrubbed. |
+| `posted_by_department` | VARCHAR(50) | NOT NULL | Authorizing municipal department (individual worker names hidden). |
+| `created_at` | TIMESTAMPTZ | NOT NULL, Default: `NOW()` | Publication timestamp; database prevents in-place mutation. |
+
+### 5. `request_audit_log` (Immutable Operational Ledger)
+* **Traceability:** NFR-002 (Data Integrity, Immutability & Traceability)
+
+| Column Name | Data Type | Constraints & Defaults | Engineering & Business Rule |
+| :--- | :--- | :--- | :--- |
+| `audit_id` | BIGINT | GENERATED ALWAYS AS IDENTITY, PRIMARY KEY | Monotonically increasing sequence ID for strict event ordering. |
+| `request_id` | UUID | NOT NULL, REFERENCES `service_requests(request_id)` ON DELETE RESTRICT | Target service ticket impacted by the transition. |
+| `actor_id` | UUID | NOT NULL, REFERENCES `users(user_id)` ON DELETE RESTRICT | Authenticated user executing the change (staff, citizen, or admin). |
+| `action` | VARCHAR(50) | NOT NULL | Operation classification: STATUS_CHANGE, STAFF_ASSIGNED, etc. |
+| `previous_state` | VARCHAR(30) | NULL | Prior lifecycle state; NULL on initial request logging. |
+| `new_state` | VARCHAR(30) | NOT NULL | Resulting lifecycle state following transition execution. |
+| `handover_notes` | TEXT | NULL | Internal remarks accompanying reassignments or state changes. |
+| `originating_ip` | VARCHAR(45) | NOT NULL | IPv4/IPv6 client address for non-repudiation and security forensics. |
+| `created_at` | TIMESTAMPTZ | NOT NULL, Default: `NOW()` | Event commit timestamp; UPDATE, DELETE, and TRUNCATE revoked. |
+
+### 6. `outbound_messages` (Messaging Boundary & Simulation Buffer)
+* **Traceability:** FR-009, ASR-08 (Messaging Integration Boundary - CHG-001)
+
+| Column Name | Data Type | Constraints & Defaults | Engineering & Business Rule |
+| :--- | :--- | :--- | :--- |
+| `message_id` | UUID | PRIMARY KEY, Default: `gen_random_uuid()` | Unique message transaction identifier. |
+| `request_id` | UUID | NOT NULL, REFERENCES `service_requests(request_id)` ON DELETE CASCADE | Associated service ticket trigger. |
+| `recipient_phone` | VARCHAR(20) | NOT NULL | Citizen mobile number formatted to E.164 standard (+27...). |
+| `channel` | VARCHAR(20) | NOT NULL, CHECK in (`WhatsApp`, `SMS`) | Dispatch channel for the notification. |
+| `message_body` | VARCHAR(1000) | NOT NULL | Formatted text containing tracking code and public update snapshot. |
+| `dispatch_status` | VARCHAR(30) | NOT NULL DEFAULT `'SIMULATED_SENT'`, CHECK in (`PENDING`, `SIMULATED_SENT`, `SENT`, `FAILED`) | Status flag; simulator marks as SIMULATED_SENT during development. |
+| `created_at` | TIMESTAMPTZ | NOT NULL, Default: `NOW()` | Timestamp when the outbound trigger was generated in UTC. |
+
+---
+
+## 17.3 Relational Schema Diagram & DDL Implementation
+*(Reference: `docs/diagrams/CC_ERD_Milestone2.png`)*
+
+```sql
+-- Core Schema DDL located at repo path: migrations/001_core_schema.sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(30) NOT NULL CHECK (role IN ('Citizen', 'Staff', 'Supervisor', 'Admin')),
+    department VARCHAR(50) CHECK (department IN ('Roads', 'Water', 'Electricity', 'Refuse', 'Sanitation', NULL)),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE request_categories (
+    category_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    category_name VARCHAR(50) UNIQUE NOT NULL,
+    default_sla_hours INT NOT NULL CHECK (default_sla_hours > 0),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE service_requests (
+    request_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tracking_code VARCHAR(25) UNIQUE NOT NULL,
+    requester_id UUID NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    category_id INT NOT NULL REFERENCES request_categories(category_id) ON DELETE RESTRICT,
+    title VARCHAR(100) NOT NULL CHECK (char_length(title) >= 5),
+    description TEXT NOT NULL CHECK (char_length(description) BETWEEN 20 AND 2000),
+    location_address VARCHAR(255) NOT NULL CHECK (char_length(location_address) >= 10),
+    suburb VARCHAR(100) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'Submitted' 
+        CHECK (status IN ('Submitted', 'Assigned', 'In_Progress', 'Resolved', 'Closed', 'Rejected')),
+    assigned_staff_id UUID NULL REFERENCES users(user_id) ON DELETE SET NULL,
+    resolution_notes TEXT NULL CHECK (resolution_notes IS NULL OR char_length(resolution_notes) >= 20),
+    rejection_reason TEXT NULL CHECK (rejection_reason IS NULL OR char_length(rejection_reason) >= 15),
+    sla_due_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE request_timeline_updates (
+    update_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    request_id UUID NOT NULL REFERENCES service_requests(request_id) ON DELETE CASCADE,
+    status_snapshot VARCHAR(30) NOT NULL,
+    public_message TEXT NOT NULL,
+    posted_by_department VARCHAR(50) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE request_audit_log (
+    audit_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    request_id UUID NOT NULL REFERENCES service_requests(request_id) ON DELETE RESTRICT,
+    actor_id UUID NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    action VARCHAR(50) NOT NULL,
+    previous_state VARCHAR(30) NULL,
+    new_state VARCHAR(30) NOT NULL,
+    handover_notes TEXT NULL,
+    originating_ip VARCHAR(45) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE outbound_messages (
+    message_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    request_id UUID NOT NULL REFERENCES service_requests(request_id) ON DELETE CASCADE,
+    recipient_phone VARCHAR(20) NOT NULL,
+    channel VARCHAR(20) NOT NULL CHECK (channel IN ('WhatsApp', 'SMS')),
+    message_body VARCHAR(1000) NOT NULL,
+    dispatch_status VARCHAR(30) NOT NULL DEFAULT 'SIMULATED_SENT' 
+        CHECK (dispatch_status IN ('PENDING', 'SIMULATED_SENT', 'SENT', 'FAILED')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+17.6 Architectural Bottlenecks, SPOF Mitigation, and Recovery
+SPOF & Connection Saturation (NFR-004): Connection exhaustion is mitigated via a managed connection pool (src/config/database.js) enforcing max: 20, a 2,000 ms acquisition timeout, and a 30-second idle connection reclamation.
+
+Disaster Recovery (RPO & PITR): PostgreSQL Write-Ahead Logging (WAL) and automated snapshots provide point-in-time recovery to reconstruct committed transactions without data corruption.
+
+Concurrency Control (FR-005, FR-006): Optimistic Concurrency Control (OCC) is enforced using timestamp version checking (WHERE request_id = :id AND updated_at = :last_seen_timestamp), rejecting race conditions with HTTP 409 Conflict.
