@@ -1,0 +1,8 @@
+CREATE EXTENSION IF NOT EXIST "uuid-ossp";
+
+DROP TABLE IF EXISTS outbound_messages CASCADE;
+DROP TABLE IF EXISTS request_audit_log CASCADE;
+DROP TABLE IF EXISTS request_timeline_updates CASCADE;
+DROP TABLE IF EXISTS service_request CASCADE;
+DROP TABLE IF EXISTS request_categories CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
