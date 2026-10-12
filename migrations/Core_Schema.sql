@@ -1,13 +1,15 @@
-CREATE EXTENSION IF NOT EXIST "uuid-ossp";
+-- Enable cryptographic extension for UUID v4 generation
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables in reverse dependency order for clean, idempotent execution
 DROP TABLE IF EXISTS outbound_messages CASCADE;
 DROP TABLE IF EXISTS request_audit_log CASCADE;
 DROP TABLE IF EXISTS request_timeline_updates CASCADE;
-DROP TABLE IF EXISTS service_request CASCADE;
+DROP TABLE IF EXISTS service_requests CASCADE;
 DROP TABLE IF EXISTS request_categories CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
---Users Table (Identity & RBAC Core - NFR-001)
+-- 1. Identity & Role-Based Access Control Core (NFR-001)
 CREATE TABLE users (
     user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     full_name VARCHAR(150) NOT NULL,
@@ -18,7 +20,7 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
---Controlled Categories Table (FR-001)
+-- 2. Controlled Category Reference Domain (FR-001, FR-007)
 CREATE TABLE request_categories (
     category_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category_name VARCHAR(50) UNIQUE NOT NULL,
@@ -26,7 +28,7 @@ CREATE TABLE request_categories (
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
---Primary Service Requests Table (Aggregate Root - FR-001, FR-006)
+-- 3. Primary Service Requests Aggregate Root (FR-001, FR-004, FR-005, FR-006)
 CREATE TABLE service_requests (
     request_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tracking_code VARCHAR(25) UNIQUE NOT NULL,
@@ -37,7 +39,7 @@ CREATE TABLE service_requests (
     location_address VARCHAR(255) NOT NULL CHECK (char_length(location_address) >= 10),
     suburb VARCHAR(100) NOT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'Submitted' 
-    CHECK (status IN ('Submitted', 'Assigned', 'In_Progress', 'Resolved', 'Closed', 'Rejected')),
+        CHECK (status IN ('Submitted', 'Assigned', 'In_Progress', 'Resolved', 'Closed', 'Rejected')),
     assigned_staff_id UUID NULL REFERENCES users(user_id) ON DELETE SET NULL,
     resolution_notes TEXT NULL CHECK (resolution_notes IS NULL OR char_length(resolution_notes) >= 20),
     rejection_reason TEXT NULL CHECK (rejection_reason IS NULL OR char_length(rejection_reason) >= 15),
@@ -46,7 +48,7 @@ CREATE TABLE service_requests (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
---Citizen Public Feedback Timeline (FR-003)
+-- 4. Public Timeline Updates (Citizen Visibility - FR-003)
 CREATE TABLE request_timeline_updates (
     update_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     request_id UUID NOT NULL REFERENCES service_requests(request_id) ON DELETE CASCADE,
@@ -56,7 +58,7 @@ CREATE TABLE request_timeline_updates (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
---Immutable Operational Audit Table (NFR-002)
+-- 5. Immutable Operational Audit Ledger (NFR-002)
 CREATE TABLE request_audit_log (
     audit_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     request_id UUID NOT NULL REFERENCES service_requests(request_id) ON DELETE RESTRICT,
@@ -69,7 +71,7 @@ CREATE TABLE request_audit_log (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
---Messaging Boundary & Outbound Queue (CHG-001 / ASR-08 / FR-009)
+-- 6. Outbound Notification Buffer (CHG-001, ASR-08, FR-009)
 CREATE TABLE outbound_messages (
     message_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     request_id UUID NOT NULL REFERENCES service_requests(request_id) ON DELETE CASCADE,
@@ -81,10 +83,18 @@ CREATE TABLE outbound_messages (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Seed Reference Categories
+-- DUMMY  DATA
+-- standard municipal categories
 INSERT INTO request_categories (category_name, default_sla_hours) VALUES
 ('Roads', 72),
 ('Water', 24),
 ('Electricity', 12),
 ('Refuse', 48),
 ('Sanitation', 24);
+
+
+INSERT INTO users (user_id, full_name, email, password_hash, role, department) VALUES
+('11111111-1111-1111-1111-111111111111', 'Admin Supervisor', 'admin@civicconnect.gov.za', '$argon2id$v=19$m=65536,t=3,p=4$dummyhashforadminaccount123456789', 'Admin', NULL),
+('22222222-2222-2222-2222-222222222222', 'Roads Field Tech', 'staff.roads@civicconnect.gov.za', '$argon2id$v=19$m=65536,t=3,p=4$dummyhashforstaffaccount123456789', 'Staff', 'Roads'),
+('33333333-3333-3333-3333-333333333333', 'Water Field Tech', 'staff.water@civicconnect.gov.za', '$argon2id$v=19$m=65536,t=3,p=4$dummyhashforstaffaccount123456789', 'Staff', 'Water'),
+('44444444-4444-4444-4444-444444444444', 'Citizen Resident', 'citizen@gmail.com', '$argon2id$v=19$m=65536,t=3,p=4$dummyhashforcitizenaccount12345678', 'Citizen', NULL);
