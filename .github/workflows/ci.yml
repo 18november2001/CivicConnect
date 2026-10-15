@@ -25,5 +25,8 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Static code-quality check
+        run: npm run lint
+     
       - name: Dependency security audit
         run: npm audit --audit-level=high 
