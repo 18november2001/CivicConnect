@@ -7,6 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
+    "lint": "eslint .",
     "test": "node --test tests/unit/*.test.js",
     "test:blackbox": "node --test tests/blackbox/*.test.js",
     "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.js",
@@ -29,6 +30,8 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "eslint": "^9.37.0",
     "supertest": "^7.3.0"
   }
 }
+
