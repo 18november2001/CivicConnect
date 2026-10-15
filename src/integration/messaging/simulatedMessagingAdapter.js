@@ -38,6 +38,29 @@ const {
   TransientDeliveryError,
 } = require('./messagingPort');
 
+
+/**
+ * Validate the required messaging fields before sending.
+ */
+function validateMessage({ channel, recipient, body, idempotencyKey }) {
+  if (!Object.values(CHANNELS).includes(channel)) {
+    throw new PermanentDeliveryError(`Unsupported channel '${channel}'.`);
+  }
+
+  if (!recipient || String(recipient).trim().length === 0) {
+    throw new PermanentDeliveryError('A recipient address is required.');
+  }
+
+  if (!body || String(body).trim().length === 0) {
+    throw new PermanentDeliveryError('A message body is required.');
+  }
+
+  if (!idempotencyKey) {
+    throw new PermanentDeliveryError('An idempotency key is required.');
+  }
+}
+
+
 class SimulatedMessagingAdapter extends MessagingPort {
   /**
    * @param {object} [options]
@@ -59,22 +82,11 @@ class SimulatedMessagingAdapter extends MessagingPort {
     return 'SimulatedMessagingAdapter';
   }
 
+ 
   async send({ channel, recipient, body, idempotencyKey }) {
-    if (!Object.values(CHANNELS).includes(channel)) {
-      throw new PermanentDeliveryError(`Unsupported channel '${channel}'.`);
-    }
-    if (!recipient || String(recipient).trim().length === 0) {
-      throw new PermanentDeliveryError('A recipient address is required.');
-    }
-    if (!body || String(body).trim().length === 0) {
-      throw new PermanentDeliveryError('A message body is required.');
-    }
-    if (!idempotencyKey) {
-      throw new PermanentDeliveryError('An idempotency key is required.');
-    }
+    validateMessage({ channel, recipient, body, idempotencyKey });
 
-    // Idempotency: the same key returns the original acceptance rather than
-    // producing a second message.
+    // Idempotency: return the original receipt for duplicate messages.
     if (this.accepted.has(idempotencyKey)) {
       return this.accepted.get(idempotencyKey);
     }
@@ -83,19 +95,24 @@ class SimulatedMessagingAdapter extends MessagingPort {
       await new Promise((resolve) => setTimeout(resolve, this.latencyMs));
     }
 
-    if (this.transientFailureRate > 0 && Math.random() < this.transientFailureRate) {
+    if (
+      this.transientFailureRate > 0 &&
+      Math.random() < this.transientFailureRate
+    ) {
       throw new TransientDeliveryError(
         'Simulated provider is temporarily unavailable.',
       );
     }
 
     this.sequence += 1;
+
     const receipt = Object.freeze({
       providerMessageId: `SIM-${String(this.sequence).padStart(8, '0')}`,
       acceptedAt: new Date(),
     });
 
     this.accepted.set(idempotencyKey, receipt);
+
     this.logger.info(
       `[simulated-messaging] ${channel} to ${recipient}: ${body} (${receipt.providerMessageId})`,
     );

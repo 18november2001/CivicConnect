@@ -98,19 +98,69 @@ The GitHub Actions checks have passed in the screenshots reviewed.
 - Dependency audit output showing 19 moderate-severity findings
 - Milestone 2 architecture baseline
 - Relevant requirement and risk registers
+- GitHub Pull Request #31 — ESLint static analysis and CI integration
+- Local ESLint output confirming zero errors after complexity refactoring
+
 
 ## 9. Static Code-Quality Verification
 
 **Tool:** ESLint
 
-**Command:** `npm run lint`
+**Commands:**
+- `npm run lint`
+- `npm test`
 
-**Scope:** JavaScript source files in `src/` and automated tests in `tests/`.
+**Scope:** JavaScript source files in `src/` and automated unit tests in `tests/`.
 
 **Execution environment:** Local development environment and GitHub Actions CI.
 
-**Result:** PASS — ESLint completed successfully without reporting lint errors.
+**Requirement references:** NFR-006 / TR-14.
 
-**Evidence:** GitHub Pull Request #31, successful `unit-tests` GitHub Actions job, including the `Static code-quality check` step.
+### 9.1 ESLint Static Analysis
 
-**Quality conclusion:** Automated static code-quality verification has been added to the CI pipeline. This check helps detect code-quality issues before changes are merged into `main`.
+ESLint is configured to check JavaScript code quality using recommended rules and a cyclomatic complexity limit.
+
+**Complexity rule:** `complexity: ["error", { max: 10 }]`
+
+This rule prevents functions with a cyclomatic complexity greater than 10 from passing the static analysis check.
+
+### 9.2 Complexity Refactoring
+
+Three functions were refactored to satisfy the complexity limit:
+
+| File | Refactoring |
+|---|---|
+| `src/domain/fsm/requestStateMachine.js` | Extracted state validation into `validateStates()`. |
+| `src/application/services/lifecycleService.js` | Extracted concurrency validation into `assertCurrentVersion()`. |
+| `src/integration/messaging/simulatedMessagingAdapter.js` | Extracted message validation into `validateMessage()`. |
+
+The refactoring separates validation responsibilities from the main functions and improves readability.
+
+### 9.3 Local Verification Results
+
+The following commands were executed after the refactoring:
+
+| Verification | Result |
+|---|---|
+| `npm test` | PASS — 22 automated unit tests passed; 0 failed. |
+| `npm run lint` | PASS — 0 ESLint errors and 0 warnings. |
+| Cyclomatic complexity limit (maximum 10) | PASS — No violations reported in the linted files. |
+
+**Local verification conclusion:** The configured static analysis and all 22 existing automated unit tests passed after the complexity refactoring.
+
+### 9.4 CI Verification
+
+GitHub Actions includes a `Static code-quality check` step in the `unit-tests` job.
+
+**Existing CI evidence:** Pull Request #31, where the ESLint check passed.
+
+The new complexity rule and associated refactoring must also pass GitHub Actions after being pushed to the pull request.
+
+### 9.5 Quality Conclusion
+
+Automated static code-quality verification supports NFR-006 by enforcing the configured ESLint rules and a maximum cyclomatic complexity of 10.
+
+The successful local lint run demonstrates compliance with the configured complexity threshold across the checked JavaScript files. The 22 passing unit tests provide regression evidence for the tested functionality.
+
+Final CI verification of the complexity changes remains pending until the updated branch passes GitHub Actions.
+

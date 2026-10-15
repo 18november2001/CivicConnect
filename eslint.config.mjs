@@ -17,6 +17,7 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
+      complexity: ["error", { max: 10 }]
     },
   },
 ];
