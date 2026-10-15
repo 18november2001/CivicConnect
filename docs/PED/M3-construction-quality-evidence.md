@@ -64,9 +64,11 @@ A dependency security audit was executed using:
 - No high- or critical-severity findings reported in the supplied output
 - The audit completed without triggering the configured high-severity failure threshold
 
-The findings include a vulnerable `sprintf-js` dependency reached through the Jest dependency chain.
+The initial audit identified 19 moderate-severity vulnerability findings associated with the Jest dependency chain.
 
-The findings remain open for assessment. The team should review compatible dependency updates and avoid applying breaking changes without regression testing.
+Following the removal of the unused Jest dependency, a subsequent `npm audit` reported zero vulnerabilities. All 22 existing automated unit tests passed after remediation.
+
+The remediation and local verification results are documented in Section 9. CI verification and pull request review remain pending.
 
 ## 6. GitHub Pull Request Evidence
 
@@ -85,7 +87,7 @@ The GitHub Actions checks have passed in the screenshots reviewed.
 ## 7. Outstanding Verification Work
 
 - Record the final merged commit identifier.
-- Assess and document the moderate dependency vulnerabilities.
+- Complete CI verification and pull request review for the dependency security remediation documented in Section 9.
 - Confirm implementation alignment with the approved architecture.
 - Link functional, API/integration and end-to-end test evidence produced by the team.
 - Add relevant evidence to the Milestone 3 traceability and defect records.
