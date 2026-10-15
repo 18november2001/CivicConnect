@@ -13,6 +13,13 @@
  * suite skips rather than fails, so a developer without a local database can
  * still run the unit and black-box suites. Continuous integration always sets
  * it, so the skip never hides a genuine failure there.
+ * 
+ * Integration test files share a single database instance and reset shared
+ * rows between cases, so they must be run serially. The test:integration
+ * script sets --test-concurrency=1 for that reason. Running the files in
+ * parallel causes one file's cleanup to remove rows another file is still
+ * using, which presents as foreign key and unique constraint violations
+ * rather than as a test isolation problem (DEF-007).
  */
 
 const { Pool } = require('pg');

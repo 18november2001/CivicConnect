@@ -16,6 +16,7 @@ reading rather than by tooling is still a defect.
 | DEF-004 | Two tables exist for the same purpose: `outbound_messages` in the core schema, and `messaging_outbox` created by ADR-INT-001. Only the latter is written by any code. `outbound_messages` defaults `dispatch_status` to `SIMULATED_SENT`, recording a message as delivered at the moment of insert, with no idempotency key, attempt count or failure state. | Schema review during M3 integration testing | Medium. No functional failure today because nothing writes to `outbound_messages`, but it is a dead table that contradicts the documented outbox design and will mislead a future developer. | Open | Proposed: drop `outbound_messages` and record the removal as a controlled change, retaining `messaging_outbox` as the single implementation of ADR-INT-001 | Pending team decision |
 | DEF-005 | `simulatedMessagingAdapter.js` returned the value of `setTimeout` from inside a promise executor, which the `no-promise-executor-return` rule flags as a latent defect: a value returned from an executor is discarded, and the pattern conceals a returned promise if the body ever changes. | ESLint, on the first run of the newly configured static analysis gate | Low. No current misbehaviour; the latency delay worked as intended. | Fixed | Executor body wrapped in braces so nothing is returned | Lint gate passes; messaging unit tests unchanged and still passing |
 | DEF-006 | `package.json` declared `jest` and `supertest` as dev dependencies while the test suite uses the Node built-in runner, and the `test` script was still the npm default error stub. `npm test` failed on a clean checkout. | Attempting to run the suite through npm during CI configuration | Medium. A new developer or an assessor following convention would conclude the project had no tests. | Fixed | Unused dependencies removed; `test`, `test:unit`, `test:blackbox`, `test:integration`, `test:all` and `lint` scripts defined | CI invokes the npm scripts rather than raw commands, so the scripts are exercised on every run |
+| DEF-007 | The `test:integration` script allowed `node --test` to run integration test files in parallel. Both files share one database and reset shared rows, so concurrent execution caused one file's cleanup to delete rows the other was still using. | The CI quality gate, on the first pull request run of the newly added `blackbox-and-integration` job | Medium. No product defect. The suite passed on a 2-core development machine and failed 5 of 9 cases on the 4-core CI runner, so the verification evidence was not reproducible and the failure presented as foreign key and unique constraint violations rather than as a test isolation fault. | Fixed | `--test-concurrency=1` added to the `test:integration` script, and the constraint documented in `tests/helpers/testDatabase.js` so it is not removed by a later change | Nine of nine passing on three consecutive serialised runs; previously 4 of 9 at concurrency 4 |
 
 ## Interpretation
 
@@ -28,3 +29,11 @@ That is the strongest argument available for the CI gate introduced in this
 milestone. The project did not lack care; it lacked a step that would have
 failed. The pipeline now applies the schema and runs the full suite on every
 pull request, so a defect of this class cannot survive a merge again.
+
+DEF-007 is worth separating from the other six. It was found by the gate itself,
+on the gate's first run, and it was a defect the development environment could
+not have exposed: a 2-core machine runs the files serially by accident, and a
+4-core runner does not. The defect was in the verification evidence rather than
+in the product, which is the more dangerous of the two, because a suite that
+passes locally and fails in CI trains a team to distrust the pipeline rather
+than the suite.

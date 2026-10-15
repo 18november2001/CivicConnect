@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node --test tests/unit/*.test.js",
     "test:blackbox": "node --test tests/blackbox/*.test.js",
-    "test:integration": "node --test tests/integration/*.test.js",
+    "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.js",
     "test:all": "npm test && npm run test:blackbox && npm run test:integration"
   },
   "repository": {
