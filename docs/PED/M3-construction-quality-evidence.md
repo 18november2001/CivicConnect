@@ -80,11 +80,10 @@ The pull request contains the CI configuration changes and associated test-comma
 
 The GitHub Actions checks have passed in the screenshots reviewed.
 
-**Merge status:** Awaiting the required two approving reviews.
+**Merge status:** Merged into main after two approving reviews and successful CI checks (PR #30).
 
 ## 7. Outstanding Verification Work
 
-- Obtain the required pull request approvals.
 - Record the final merged commit identifier.
 - Assess and document the moderate dependency vulnerabilities.
 - Confirm implementation alignment with the approved architecture.
@@ -100,3 +99,18 @@ The GitHub Actions checks have passed in the screenshots reviewed.
 - Milestone 2 architecture baseline
 - Relevant requirement and risk registers
 
+## 9. Static Code-Quality Verification
+
+**Tool:** ESLint
+
+**Command:** `npm run lint`
+
+**Scope:** JavaScript source files in `src/` and automated tests in `tests/`.
+
+**Execution environment:** Local development environment and GitHub Actions CI.
+
+**Result:** PASS — ESLint completed successfully without reporting lint errors.
+
+**Evidence:** GitHub Pull Request #31, successful `unit-tests` GitHub Actions job, including the `Static code-quality check` step.
+
+**Quality conclusion:** Automated static code-quality verification has been added to the CI pipeline. This check helps detect code-quality issues before changes are merged into `main`.
