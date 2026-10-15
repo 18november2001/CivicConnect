@@ -148,19 +148,27 @@ The following commands were executed after the refactoring:
 
 **Local verification conclusion:** The configured static analysis and all 22 existing automated unit tests passed after the complexity refactoring.
 
+
 ### 9.4 CI Verification
 
 GitHub Actions includes a `Static code-quality check` step in the `unit-tests` job.
 
-**Existing CI evidence:** Pull Request #31, where the ESLint check passed.
+**CI evidence:** GitHub Pull Request #31 — ESLint static code-quality checks and complexity refactoring.
 
-The new complexity rule and associated refactoring must also pass GitHub Actions after being pushed to the pull request.
+**CI result:** PASS — Both GitHub Actions checks completed successfully after the complexity changes were pushed.
+
+The updated complexity rule and associated refactoring passed GitHub Actions, confirming that the configured static code-quality checks are enforced in CI.
+
+**Pull request status:** PR #31 remains open because two approving reviews from reviewers with write access are required before merging into `main`.
 
 ### 9.5 Quality Conclusion
 
 Automated static code-quality verification supports NFR-006 by enforcing the configured ESLint rules and a maximum cyclomatic complexity of 10.
 
-The successful local lint run demonstrates compliance with the configured complexity threshold across the checked JavaScript files. The 22 passing unit tests provide regression evidence for the tested functionality.
+Local verification confirmed that all 22 automated unit tests passed and ESLint completed without errors or warnings.
 
-Final CI verification of the complexity changes remains pending until the updated branch passes GitHub Actions.
+GitHub Actions also completed successfully for the updated complexity changes, providing CI verification evidence.
+
+The configured static code-quality checks have passed locally and in CI. Pull Request #31 remains pending the required two approving reviews before merging into `main`.
+
 
