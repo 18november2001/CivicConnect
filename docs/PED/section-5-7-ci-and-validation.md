@@ -1,26 +1,14 @@
-\# 5. CI and Automated Verification
+# 5. CI and Automated Verification
 
-
-
-\## 5.1 What was introduced and why now
-
-
+## 5.1 What was introduced and why now
 
 Milestone 1 recorded DEC-003: required status checks were deliberately deferred because the technology stack had not been selected, and a status check with no build or test behind it would have presented the appearance of automated verification while checking nothing. The alternative considered at the time was a placeholder workflow, which was rejected for that reason.
 
-
-
 The evidence that decision was waiting for arrived at Milestone 2, when ADR-TEC-001 confirmed Node.js and PostgreSQL. Milestone 3 therefore implements the control. DEC-003 moves from Deferred to Implemented in the Engineering Decision Log, with the closure recorded against the original entry rather than replacing it, so the decision's history remains visible.
-
-
 
 The pipeline is defined in `.github/workflows/ci.yml` and runs on every push and every pull request. The base pipeline and the unit test job were built by Student 1; Milestone 3 extends it with static analysis, secret scanning, and a job that stands up a real database.
 
-
-
-\## 5.2 Pipeline jobs and what each one checks
-
-
+## 5.2 Pipeline jobs and what each one checks
 
 | Job | Check | What a pass demonstrates | What it does not demonstrate |
 
@@ -34,71 +22,37 @@ The pipeline is defined in `.github/workflows/ci.yml` and runs on every push and
 
 | `Black-box and integration tests` | Applies all three schema files to an empty PostgreSQL 16 instance, then runs 10 black-box and 9 integration tests | The schema is valid and applies cleanly, and transition atomicity, concurrency control, constraint enforcement and audit immutability hold against a real database | Behaviour under concurrent load, or any behaviour reachable only through an HTTP interface |
 
-
-
 Two choices in that configuration were deliberate and are worth defending.
-
-
 
 The dependency audit blocks only at high severity and above. A check that fires constantly on low-severity findings becomes a check the team learns to dismiss, at which point it protects nothing.
 
-
-
 The lint rules are selected for correctness rather than style. Formatting rules were excluded for the same reason. The rules that were included target the failure modes this codebase is actually exposed to: the lifecycle and messaging code is asynchronous and transactional, so a value silently discarded from a promise executor or a non-atomic update is a defect class worth failing a build over. That selection was vindicated immediately, as section 5.3 describes.
-
-
 
 Database application runs as its own job rather than as a step inside the unit test job, so a database problem is distinguishable from a logic failure without reading the log.
 
-
-
-\## 5.3 The quality gate, and evidence that it blocks
-
-
+## 5.3 The quality gate, and evidence that it blocks
 
 The brief requires that at least one meaningful failure blocks progression. All four jobs are configured as required status checks on `main` in the `main-protection` ruleset, alongside the two approvals already in force since Milestone 1. A failure in any job prevents the merge rather than merely reporting it.
 
-
-
 This was not demonstrated with a deliberately broken branch. It did not need to be, because the gate blocked a real defect on its first pull request run.
-
-
 
 CI run 28 failed on the integration job while the unit test and secret scan jobs passed. The cause was that the integration test files were being run in parallel by the Node test runner. Both files share a single database and reset shared rows between cases, so concurrent execution caused one file's cleanup to delete rows the other was still using. The suite passed on a two-core development machine, where the files run serially by accident, and failed five of nine cases on the four-core CI runner.
 
-
-
 The failure was recorded as DEF-007, the cause was fixed by serialising the integration files, the constraint was documented in the test helper so a later change does not silently remove it, and CI run 34 passed. Run 38 confirms all four jobs green after static analysis was added.
-
-
 
 Two things are worth drawing out. First, the defect was in the verification evidence rather than in the product, which is the more dangerous of the two: a suite that passes locally and fails in CI trains a team to distrust the pipeline rather than the suite. Second, the development environment could not have exposed it. No amount of care on a two-core machine would have found a fault that only appears at four-way concurrency. That is an argument for the gate that does not rely on the team having been careless.
 
-
-
 ESLint also found a defect on its first run, recorded as DEF-005: a value returned from a promise executor in `simulatedMessagingAdapter.js`, which is discarded silently and conceals a returned promise if the body ever changes.
 
-
-
-\## 5.4 What a green pipeline does and does not allow us to conclude
-
-
+## 5.4 What a green pipeline does and does not allow us to conclude
 
 It allows us to conclude that the schema applies cleanly to an empty PostgreSQL 16 database, that 41 specified behaviours hold, that no configured lint rule is violated, that no high-severity dependency advisory is present, and that no recognisable credential has been committed.
 
-
-
 It does not allow us to conclude that the system is correct. The suite verifies the behaviours the team thought to specify. It cannot verify a requirement nobody wrote a test for, it does not exercise any HTTP interface because none exists, and it says nothing about behaviour under realistic load.
-
-
 
 Coverage percentage is deliberately not reported. The suite is selected by risk, and a percentage would imply a completeness the selection does not claim.
 
-
-
-\## 5.5 Evidence location
-
-
+## 5.5 Evidence location
 
 | Evidence | Where |
 
@@ -117,14 +71,6 @@ Coverage percentage is deliberately not reported. The suite is selected by risk,
 | All four jobs green | CI run 38, `https://github.com/18november2001/CivicConnect/actions/runs/38784961372` |
 
 | Defect records | `docs/quality/defect-register.md` |
-
-
-
-\---
-
-
-
-\# 7. Black-Box,
 
 # 7. Black-Box, Integration and System Validation
 
