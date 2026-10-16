@@ -186,12 +186,14 @@ async function updateRequestStatus(req, res) {
 
     try {
       assertTransition({
-        currentState: currentRequest.status,
-        targetState: nextStatus,
+        from: currentRequest.status,
+        to: nextStatus,
         actorRole: actor.role,
-        assignedStaffId: assignedStaffId || currentRequest.assigned_staff_id,
-        resolutionNotes,
-        rejectionReason,
+        context: {
+          assignedStaffId: assignedStaffId || currentRequest.assigned_staff_id,
+          resolutionNotes,
+          rejectionReason,
+        },
       });
     } catch (fsmError) {
       await client.query('ROLLBACK');
