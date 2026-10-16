@@ -61,6 +61,11 @@ jobs:
       # and are never committed.
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/civicconnect_test
       TEST_APP_DATABASE_URL: postgres://civicconnect_app:ci_only_password@localhost:5432/civicconnect_test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: civicconnect_test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
 
     steps:
       - name: Checkout code
@@ -93,6 +98,9 @@ jobs:
 
       - name: Integration and persistence tests
         run: npm run test:integration
+
+      - name: End-to-end system tests
+        run: npm run test:e2e
 
   # Added for M3 Criterion C. A committed credential cannot be undone by
   # deleting the file, so this runs on every change rather than at review time.
