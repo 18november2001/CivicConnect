@@ -80,7 +80,9 @@ class SimulatedMessagingAdapter extends MessagingPort {
     }
 
     if (this.latencyMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, this.latencyMs));
+      await new Promise((resolve) => {
+        setTimeout(resolve, this.latencyMs);
+      });
     }
 
     if (this.transientFailureRate > 0 && Math.random() < this.transientFailureRate) {

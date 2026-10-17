@@ -4,8 +4,16 @@
   "description": "CivicConnect Municipal Service Management API",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "test": "node --test tests/**/*.test.js"
+"start": "node src/server.js",
+    "lint": "eslint .",
+    "test": "node --test tests/unit/*.test.js",
+    "test:blackbox": "node --test tests/blackbox/*.test.js",
+    "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.js",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.js",
+    "perf": "node tests/performance/staffQueueLoad.js",
+    "test:all": "npm test && npm run test:blackbox && npm run test:integration && npm run test:e2e",
+    "test:fsm": "node runFsmTest.js",
+    "test:extended": "node runExtendedTests.js"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -15,6 +23,7 @@
     "pg": "^8.13.0"
   },
   "devDependencies": {
+"eslint": "^9.37.0",
     "supertest": "^7.0.0"
   }
 }
