@@ -1,39 +1,29 @@
 {
   "name": "civicconnect",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "CivicConnect Municipal Service Management API",
+  "main": "src/server.js",
   "scripts": {
+"start": "node src/server.js",
     "lint": "eslint .",
     "test": "node --test tests/unit/*.test.js",
     "test:blackbox": "node --test tests/blackbox/*.test.js",
     "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.js",
     "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.js",
     "perf": "node tests/performance/staffQueueLoad.js",
-    "test:all": "npm test && npm run test:blackbox && npm run test:integration && npm run test:e2e"
+    "test:all": "npm test && npm run test:blackbox && npm run test:integration && npm run test:e2e",
+    "test:fsm": "node runFsmTest.js",
+    "test:extended": "node runExtendedTests.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/18november2001/CivicConnect.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/18november2001/CivicConnect/issues"
-  },
-  "homepage": "https://github.com/18november2001/CivicConnect#readme",
   "dependencies": {
-    "dotenv": "^18.0.5",
-    "pg": "^8.23.1"
+    "@node-rs/argon2": "^2.0.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.0"
   },
   "devDependencies": {
-    "eslint": "^9.37.0",
+"eslint": "^9.37.0",
     "supertest": "^7.0.0"
   }
 }
-
