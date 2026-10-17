@@ -118,7 +118,9 @@ class LifecycleService {
         context,
       });
 
-      const occurredAt = new Date();
+      const occurredAt = new Date(
+        Math.max(Date.now(), new Date(request.updated_at).getTime() + 1) 
+      );
 
       await tx.query(
         `UPDATE service_requests
