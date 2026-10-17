@@ -1,6 +1,6 @@
 'use strict';
 
-function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res,_next) {
   if (err.name === 'IllegalTransitionError') {
     return res.status(422).json({
       error: 'Unprocessable Entity',

@@ -16,7 +16,7 @@ function requireAuth(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'civicconnect-dev-secret-key-32chars');
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({
       error: 'Unauthorized',
       message: 'Invalid or expired token',

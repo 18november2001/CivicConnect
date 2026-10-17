@@ -24,7 +24,7 @@ function post(path, body, token) {
         res.on('end', () => {
           try {
             resolve({ status: res.statusCode, data: JSON.parse(raw) });
-          } catch (e) {
+          } catch {
             resolve({ status: res.statusCode, raw });
           }
         });
@@ -59,7 +59,7 @@ function patch(path, body, token) {
         res.on('end', () => {
           try {
             resolve({ status: res.statusCode, data: JSON.parse(raw) });
-          } catch (e) {
+          } catch {
             resolve({ status: res.statusCode, raw });
           }
         });
