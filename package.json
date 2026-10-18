@@ -5,6 +5,10 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed:demo": "node scripts/seedDemo.js",
+    "create-user": "node scripts/createUser.js",
+    "build:frontend": "npm --prefix frontend install && npm --prefix frontend run build",
     "lint": "eslint .",
     "test": "node --test tests/unit/*.test.js",
     "test:blackbox": "node --test tests/blackbox/*.test.js",
