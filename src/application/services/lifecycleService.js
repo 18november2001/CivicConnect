@@ -156,7 +156,8 @@ class LifecycleService {
         actorId,
         actorRole,
         actorDepartment,
-        notes: context.resolutionNotes || context.rejectionReason || null,
+        notes:
+          context.resolutionNotes || context.rejectionReason || context.handoverNotes || null,
         originatingIp,
         occurredAt,
       });
