@@ -25,6 +25,10 @@ export const liveApi: Api = {
     const r = await http<{ token: string; user: User }>("/auth/register", { method: "POST", body: { fullName: name, email, password } });
     session.setToken(r.token); return r.user;
   },
+  async registerStaff(name, email, password, department, staffCode) {
+    const r = await http<{ token: string; user: User }>("/auth/register-staff", { method: "POST", body: { fullName: name, email, password, department, staffCode } });
+    session.setToken(r.token); return r.user;
+  },
   createRequest: (_a, d) => http<ServiceRequest>("/requests", { method: "POST", body: { title: d.title.trim(), category: d.category, description: d.description.trim(), locationAddress: d.address.trim(), suburb: d.suburb.trim() } }),
   myRequests: (_a, page, size) => http("/requester/requests" + qs({ page, pageSize: size })),
   async getRequest(id) { try { return await http<ServiceRequest>(`/requests/${encodeURIComponent(id)}`); } catch (e) { if (e instanceof ApiError && e.status === 404) return null; throw e; } },
@@ -41,3 +45,4 @@ export const liveApi: Api = {
     return { filename: `civicconnect-export.${format}`, blob: await res.blob() };
   },
 };
+
