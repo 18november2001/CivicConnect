@@ -16,7 +16,17 @@
 module.exports = [
   {
     files: ['**/*.js'],
-    ignores: ['node_modules/**'],
+    ignores: [
+      'node_modules/**',
+      'testLiveApi.js',
+      'creteStuff.js',
+      'checkRole.js',
+      'checkSchema.js',
+      'runSchema.js',
+      'fixPassword.js',
+      'InitAndSeedDb.JS',
+      'testRollbackIntegrity.js'
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'commonjs',
@@ -30,7 +40,8 @@ module.exports = [
         clearTimeout: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
-        Buffer: 'readonly'
+        Buffer: 'readonly',
+        fetch: 'readonly'
       }
     },
     linterOptions: {

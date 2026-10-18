@@ -1,11 +1,167 @@
 const express = require('express');
 const router = express.Router();
-const requestController = require('../controllers/requestController');
-
-router.post('/', requestController.createRequest);
-router.get('/', requestController.getRequests);
-
-router.get('/:id', requestController.getRequestById);
-router.patch('/:id/status', requestController.updateRequestStatus);
-
+const db = require('../config/database');
+const { authenticateToken } = require('../middleware/auth');
+ 
+async function handleGetRequests(req, res, next) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
+    const offset = (page - 1) * pageSize;
+    const userId = req.user.id;
+ 
+    const countResult = await db.query(
+      'SELECT COUNT(*) FROM service_requests WHERE requester_id = $1',
+      [userId]
+    );
+    const total = parseInt(countResult.rows[0]?.count || 0, 10);
+ 
+    const query = `
+      SELECT 
+        sr.request_id,
+        sr.request_id AS id,
+        sr.tracking_code,
+        sr.tracking_code AS "trackingCode",
+        sr.tracking_code AS "trackingId",
+        sr.tracking_code AS "tracking_id",
+        sr.requester_id,
+        sr.requester_id AS "requesterId",
+        sr.category_id,
+        rc.category_name AS category,
+        rc.category_name AS "categoryName",
+        sr.title,
+        sr.description,
+        sr.location_address,
+        sr.location_address AS "locationAddress",
+        sr.location_address AS "streetAddress",
+        sr.suburb,
+        sr.status,
+        sr.created_at,
+        sr.created_at AS "createdAt",
+        sr.created_at AS "submittedAt",
+        sr.created_at AS "submitted"
+      FROM service_requests sr
+      LEFT JOIN request_categories rc ON sr.category_id = rc.category_id
+      WHERE sr.requester_id = $1
+      ORDER BY sr.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+ 
+    const result = await db.query(query, [userId, pageSize, offset]);
+ 
+    return res.status(200).json({
+      items: result.rows,
+      page,
+      pageSize,
+      total,
+      pages: Math.ceil(total / pageSize) || 1
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+ 
+async function handleCreateRequest(req, res, next) {
+  try {
+    const { 
+      title, 
+      category, 
+      category_id, 
+      description, 
+      location_address, 
+      street_address,
+      streetAddress,
+      address, 
+      suburb 
+    } = req.body;
+    
+    const requesterId = req.user.id;
+ 
+    let targetCategoryId = category_id;
+    let slaHours = 48;
+ 
+    if (!targetCategoryId && category) {
+      const catLookup = await db.query(
+        'SELECT category_id, default_sla_hours FROM request_categories WHERE category_name ILIKE $1 LIMIT 1',
+        [category]
+      );
+      if (catLookup.rows.length) {
+        targetCategoryId = catLookup.rows[0].category_id;
+        slaHours = catLookup.rows[0].default_sla_hours || 48;
+      }
+    }
+ 
+    if (!targetCategoryId) {
+      const firstCat = await db.query('SELECT category_id, default_sla_hours FROM request_categories LIMIT 1');
+      if (firstCat.rows.length) {
+        targetCategoryId = firstCat.rows[0].category_id;
+        slaHours = firstCat.rows[0].default_sla_hours || 48;
+      } else {
+        targetCategoryId = 1;
+      }
+    }
+ 
+    const trackingCode = `CC-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const street = location_address || street_address || streetAddress || address || 'Default Street Address';
+ 
+    const insertQuery = `
+      INSERT INTO service_requests (
+        request_id,
+        tracking_code,
+        requester_id,
+        category_id,
+        title,
+        description,
+        location_address,
+        suburb,
+        status,
+        sla_due_at,
+        created_at
+      ) VALUES (
+        gen_random_uuid(),
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        'Submitted',
+        NOW() + ($8 || ' hours')::interval,
+        NOW()
+      ) RETURNING *;
+    `;
+ 
+    const result = await db.query(insertQuery, [
+      trackingCode,
+      requesterId,
+      targetCategoryId,
+      title,
+      description,
+      street,
+      suburb,
+      slaHours
+    ]);
+ 
+    const created = result.rows[0];
+ 
+    return res.status(201).json({
+      ...created,
+      id: created.request_id,
+      trackingId: created.tracking_code,
+      trackingCode: created.tracking_code,
+      submittedAt: created.created_at,
+      createdAt: created.created_at
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+ 
+router.get('/', authenticateToken, handleGetRequests);
+router.get('/requests', authenticateToken, handleGetRequests);
+router.post('/', authenticateToken, handleCreateRequest);
+router.post('/requests', authenticateToken, handleCreateRequest);
+ 
 module.exports = router;
+ 
