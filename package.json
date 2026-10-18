@@ -4,7 +4,7 @@
   "description": "CivicConnect Municipal Service Management API",
   "main": "src/server.js",
   "scripts": {
-"start": "node src/server.js",
+    "start": "node src/server.js",
     "lint": "eslint .",
     "test": "node --test tests/unit/*.test.js",
     "test:blackbox": "node --test tests/blackbox/*.test.js",
@@ -23,7 +23,9 @@
     "pg": "^8.13.0"
   },
   "devDependencies": {
-"eslint": "^9.37.0",
-    "supertest": "^7.0.0"
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0",
+    "globals": "^16.0.0",
+    "supertest": "^7.3.0"
   }
 }
