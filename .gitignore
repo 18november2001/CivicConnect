@@ -22,3 +22,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Keep the example env files tracked
+!.env.example
+!frontend/env.example
+frontend/node_modules/
+frontend/dist/
+coverage/
+
