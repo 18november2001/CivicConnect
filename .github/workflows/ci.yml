@@ -1,11 +1,14 @@
-
 name: CivicConnect CI
 
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
+  # Existing job. Unchanged.
   unit-tests:
     runs-on: ubuntu-latest
 
@@ -25,5 +28,116 @@ jobs:
       - name: Run unit tests
         run: npm test
 
+      - name: Static code-quality check
+        run: npm run lint
+     
       - name: Dependency security audit
-        run: npm audit --audit-level=high 
+        run: npm audit --audit-level=high
+
+  # Added for M3 Criterion D. Verifies behaviour the unit suite cannot reach:
+  # transactional rollback, constraint enforcement and database privileges.
+  # Runs independently of unit-tests so a database problem is distinguishable
+  # from a logic failure.
+  blackbox-and-integration:
+    name: Black-box and integration tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: civicconnect_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Disposable credentials for an ephemeral database destroyed with the
+      # runner. These are not project secrets and reach nothing outside this
+      # job. Real environment credentials are supplied through configuration
+      # and are never committed.
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/civicconnect_test
+      TEST_APP_DATABASE_URL: postgres://civicconnect_app:ci_only_password@localhost:5432/civicconnect_test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: civicconnect_test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # This step is the one that would have caught DEF-001. Until M3 the
+      # schema had never been applied by anything, so a syntax error on its
+      # first line survived two milestones undetected.
+      - name: Apply database schema
+        run: |
+          export PGPASSWORD=postgres
+          for file in db/schema/*.sql; do
+            echo "Applying $file"
+            psql -h localhost -U postgres -d civicconnect_test -v ON_ERROR_STOP=1 -f "$file"
+          done
+          psql -h localhost -U postgres -d civicconnect_test -v ON_ERROR_STOP=1 \
+            -c "ALTER ROLE civicconnect_app LOGIN PASSWORD 'ci_only_password';"
+
+      - name: Black-box functional tests
+        run: npm run test:blackbox
+
+      - name: Integration and persistence tests
+        run: npm run test:integration
+
+      - name: End-to-end system tests
+        run: npm run test:e2e
+
+  # Added for M3 Criterion C. A committed credential cannot be undone by
+  # deleting the file, so this runs on every change rather than at review time.
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  static-analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint

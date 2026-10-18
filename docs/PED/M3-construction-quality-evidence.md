@@ -82,11 +82,10 @@ The pull request contains the CI configuration changes and associated test-comma
 
 The GitHub Actions checks have passed in the screenshots reviewed.
 
-**Merge status:** Merged into `main`.
+**Merge status:** Merged into main after two approving reviews and successful CI checks (PR #30).
 
 ## 7. Outstanding Verification Work
 
-- Obtain the required approving reviews for Pull Request #31 and the security-remediation pull request when opened.
 - Record the final merged commit identifier.
 - Complete CI verification and pull request review for the dependency security remediation documented in Section 9.
 - Confirm implementation alignment with the approved architecture.
@@ -101,52 +100,77 @@ The GitHub Actions checks have passed in the screenshots reviewed.
 - Dependency audit output showing 19 moderate-severity findings
 - Milestone 2 architecture baseline
 - Relevant requirement and risk registers
-- Local npm audit output showing 0 reported vulnerabilities after Jest removal
-- Local terminal output confirming 22 passing unit tests after dependency remediation
+- GitHub Pull Request #31 — ESLint static analysis and CI integration
+- Local ESLint output confirming zero errors after complexity refactoring
 
 
-## 9. Dependency Security Audit and Remediation
+## 9. Static Code-Quality Verification
 
-### 9.1 Initial Security Findings
+**Tool:** ESLint
 
-**Tool:** npm audit
+**Commands:**
+- `npm run lint`
+- `npm test`
 
-**Initial result:** 19 moderate-severity vulnerability findings.
+**Scope:** JavaScript source files in `src/` and automated unit tests in `tests/`.
 
-The audit identified a vulnerable `sprintf-js` dependency introduced through the Jest development dependency chain.
+**Execution environment:** Local development environment and GitHub Actions CI.
 
-The findings were associated with a potential denial-of-service vulnerability involving unbounded precision specifiers.
+**Requirement references:** NFR-006 / TR-14.
 
-### 9.2 Remediation
+### 9.1 ESLint Static Analysis
 
-The project uses Node.js's built-in test runner for its existing automated unit tests.
+ESLint is configured to check JavaScript code quality using recommended rules and a cyclomatic complexity limit.
 
-A project search found no Jest-specific test code in the checked files. Jest was therefore removed from the development dependencies.
+**Complexity rule:** `complexity: ["error", { max: 10 }]`
 
-**Remediation command:** `npm uninstall jest --save-dev`
+This rule prevents functions with a cyclomatic complexity greater than 10 from passing the static analysis check.
 
-**Result:** 336 packages removed, with `package.json` and `package-lock.json` updated.
+### 9.2 Complexity Refactoring
 
-The `supertest` development dependency was retained for potential API integration testing.
+Three functions were refactored to satisfy the complexity limit:
 
-### 9.3 Local Verification
+| File | Refactoring |
+|---|---|
+| `src/domain/fsm/requestStateMachine.js` | Extracted state validation into `validateStates()`. |
+| `src/application/services/lifecycleService.js` | Extracted concurrency validation into `assertCurrentVersion()`. |
+| `src/integration/messaging/simulatedMessagingAdapter.js` | Extracted message validation into `validateMessage()`. |
+
+The refactoring separates validation responsibilities from the main functions and improves readability.
+
+### 9.3 Local Verification Results
+
+The following commands were executed after the refactoring:
 
 | Verification | Result |
 |---|---|
-| Initial npm audit | 19 moderate-severity findings |
-| npm audit after remediation | PASS — 0 reported vulnerabilities |
-| npm test after remediation | PASS — 22 tests passed, 0 failed |
+| `npm test` | PASS — 22 automated unit tests passed; 0 failed. |
+| `npm run lint` | PASS — 0 ESLint errors and 0 warnings. |
+| Cyclomatic complexity limit (maximum 10) | PASS — No violations reported in the linted files. |
 
-### 9.4 Security Conclusion
+**Local verification conclusion:** The configured static analysis and all 22 existing automated unit tests passed after the complexity refactoring.
 
-Removing the unused Jest dependency eliminated the 19 previously reported moderate-severity vulnerability findings from the audited dependency tree.
 
-All 22 existing automated unit tests continued to pass after the dependency change.
+### 9.4 CI Verification
 
-The subsequent `npm audit` reported zero known dependency vulnerabilities. This result does not establish that the entire application is free of security vulnerabilities.
+GitHub Actions includes a `Static code-quality check` step in the `unit-tests` job.
 
-GitHub Actions verification completed successfully for Pull Request #32 following the removal of the unused Jest dependency. The configured CI checks passed, providing automated verification of the updated dependency configuration.
+**CI evidence:** GitHub Pull Request #31 — ESLint static code-quality checks and complexity refactoring.
 
-Pull Request #32 remains open pending the required approving reviews before merging into `main`.
+**CI result:** PASS — Both GitHub Actions checks completed successfully after the complexity changes were pushed.
+
+The updated complexity rule and associated refactoring passed GitHub Actions, confirming that the configured static code-quality checks are enforced in CI.
+
+**Pull request status:** PR #31 remains open because two approving reviews from reviewers with write access are required before merging into `main`.
+
+### 9.5 Quality Conclusion
+
+Automated static code-quality verification supports NFR-006 by enforcing the configured ESLint rules and a maximum cyclomatic complexity of 10.
+
+Local verification confirmed that all 22 automated unit tests passed and ESLint completed without errors or warnings.
+
+GitHub Actions also completed successfully for the updated complexity changes, providing CI verification evidence.
+
+The configured static code-quality checks have passed locally and in CI. Pull Request #31 remains pending the required two approving reviews before merging into `main`.
 
 

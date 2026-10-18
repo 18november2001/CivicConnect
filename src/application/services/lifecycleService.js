@@ -56,6 +56,19 @@ class ConcurrentModificationError extends Error {
   }
 }
 
+/**
+ * Reject a transition when the caller has an outdated request version.
+ */
+function assertCurrentVersion(request, expectedUpdatedAt, requestId) {
+  if (
+    expectedUpdatedAt &&
+    new Date(request.updated_at).getTime() !==
+      new Date(expectedUpdatedAt).getTime()
+  ) {
+    throw new ConcurrentModificationError(requestId);
+  }
+}
+
 class LifecycleService {
   constructor({ db, dispatcher }) {
     this.db = db;
@@ -102,13 +115,7 @@ class LifecycleService {
       }
 
       // Optimistic concurrency control: reject a write based on a stale read.
-      if (
-        expectedUpdatedAt &&
-        new Date(request.updated_at).getTime() !==
-          new Date(expectedUpdatedAt).getTime()
-      ) {
-        throw new ConcurrentModificationError(requestId);
-      }
+      assertCurrentVersion(request, expectedUpdatedAt, requestId);
 
       // Throws IllegalTransitionError carrying every failed precondition.
       assertTransition({
@@ -118,7 +125,9 @@ class LifecycleService {
         context,
       });
 
-      const occurredAt = new Date();
+      const occurredAt = new Date(
+        Math.max(Date.now(), new Date(request.updated_at).getTime() + 1) 
+      );
 
       await tx.query(
         `UPDATE service_requests

@@ -57,6 +57,21 @@ function isTerminal(state) {
   return TERMINAL_STATES.includes(state);
 }
 
+/** Collect validation errors for unrecognised lifecycle states. */
+function validateStates(from, to) {
+  const violations = [];
+
+  if (!isKnownState(from)) {
+    violations.push(`Current status '${from}' is not a recognised state.`);
+  }
+
+  if (!isKnownState(to)) {
+    violations.push(`Target status '${to}' is not a recognised state.`);
+  }
+
+  return violations;
+}
+
 /**
  * Evaluate a proposed transition.
  *
@@ -69,14 +84,8 @@ function isTerminal(state) {
  * @returns {{allowed: boolean, violations: string[]}}
  */
 function evaluateTransition({ from, to, actorRole, context = {} }) {
-  const violations = [];
+  const violations = validateStates(from, to);
 
-  if (!isKnownState(from)) {
-    violations.push(`Current status '${from}' is not a recognised state.`);
-  }
-  if (!isKnownState(to)) {
-    violations.push(`Target status '${to}' is not a recognised state.`);
-  }
   if (violations.length > 0) {
     return { allowed: false, violations };
   }
