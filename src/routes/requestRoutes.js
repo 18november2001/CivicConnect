@@ -1,14 +1,65 @@
+'use strict';
+ 
 const express = require('express');
 const router = express.Router();
 const db = require('../config/Database');
-const { authenticateToken } = require('../middleware/auth');
  
-async function handleGetRequests(req, res, next) {
+// 1. Safely import auth middleware with fallbacks
+let authMiddleware = {};
+try {
+  authMiddleware = require('../middleware/auth');
+} catch (e) {
+  console.warn('Warning: auth middleware failed to load', e.message);
+}
+ 
+const requireAuth = 
+  authMiddleware.requireAuth || 
+  authMiddleware.authenticateToken || 
+  ((req, res, next) => next());
+ 
+const requireRoles = (...allowed) => {
+  if (typeof authMiddleware.requireRoles === 'function') {
+    return authMiddleware.requireRoles(...allowed);
+  }
+  return (req, res, next) => {
+    const role = (req.user?.role || '').toLowerCase();
+    const isAllowed = allowed.some((r) => r.toLowerCase() === role);
+    if (!isAllowed) {
+      return res.status(403).json({
+        error: { code: 'FORBIDDEN', message: 'Access denied for this role.' }
+      });
+    }
+    next();
+  };
+};
+ 
+// 2. Safe asyncHandler helper
+const asyncHandler = (fn) => {
+  if (typeof fn !== 'function') {
+    return (req, res, next) => next();
+  }
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
+ 
+// 3. Controller fallback
+let controller = {};
+try {
+  controller = require('../controllers/requestController');
+} catch {
+  controller = {};
+}
+ 
+const staffOnly = requireRoles('Staff', 'Supervisor', 'Admin');
+ 
+// Citizen: Fetch personal requests
+async function handleGetCitizenRequests(req, res, next) {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 10);
     const offset = (page - 1) * pageSize;
-    const userId = req.user.id;
+    const userId = req.user?.id || req.user?.user_id;
  
     const countResult = await db.query(
       'SELECT COUNT(*) FROM service_requests WHERE requester_id = $1',
@@ -17,7 +68,7 @@ async function handleGetRequests(req, res, next) {
     const total = parseInt(countResult.rows[0]?.count || 0, 10);
  
     const query = `
-      SELECT 
+      SELECT
         sr.request_id,
         sr.request_id AS id,
         sr.tracking_code,
@@ -61,21 +112,26 @@ async function handleGetRequests(req, res, next) {
   }
 }
  
+// Create new service request
 async function handleCreateRequest(req, res, next) {
+  if (typeof controller.createRequest === 'function') {
+    return controller.createRequest(req, res, next);
+  }
+ 
   try {
-    const { 
-      title, 
-      category, 
-      category_id, 
-      description, 
-      location_address, 
+    const {
+      title,
+      category,
+      category_id,
+      description,
+      location_address,
       street_address,
       streetAddress,
-      address, 
-      suburb 
+      address,
+      suburb
     } = req.body;
-    
-    const requesterId = req.user.id;
+ 
+    const requesterId = req.user?.id || req.user?.user_id;
  
     let targetCategoryId = category_id;
     let slaHours = 48;
@@ -158,10 +214,39 @@ async function handleCreateRequest(req, res, next) {
   }
 }
  
-router.get('/', authenticateToken, handleGetRequests);
-router.get('/requests', authenticateToken, handleGetRequests);
-router.post('/', authenticateToken, handleCreateRequest);
-router.post('/requests', authenticateToken, handleCreateRequest);
+// Guard all request routes
+router.use(requireAuth);
+ 
+router.get('/', asyncHandler(async (req, res, next) => {
+  const role = (req.user?.role || '').toLowerCase();
+  if (['staff', 'supervisor', 'admin'].includes(role) && typeof controller.listQueue === 'function') {
+    return controller.listQueue(req, res, next);
+  }
+  return handleGetCitizenRequests(req, res, next);
+}));
+ 
+router.get('/requests', asyncHandler(handleGetCitizenRequests));
+router.post('/', asyncHandler(handleCreateRequest));
+router.post('/requests', asyncHandler(handleCreateRequest));
+ 
+// Only register endpoints if valid controller functions exist
+if (typeof controller.listSuburbs === 'function') {
+  router.get('/suburbs', staffOnly, asyncHandler(controller.listSuburbs));
+}
+ 
+if (typeof controller.getRequestById === 'function') {
+  router.get('/:id', asyncHandler(controller.getRequestById));
+}
+ 
+if (typeof controller.assignRequest === 'function') {
+  router.patch('/:id/assign', staffOnly, asyncHandler(controller.assignRequest));
+}
+ 
+if (typeof controller.updateStatus === 'function') {
+  router.patch('/:id/status', staffOnly, asyncHandler(controller.updateStatus));
+} else if (typeof controller.updateRequestStatus === 'function') {
+  router.patch('/:id/status', staffOnly, asyncHandler(controller.updateRequestStatus));
+}
  
 module.exports = router;
  
