@@ -1,12 +1,25 @@
 // Basis: FR-002, FR-005, FR-006, NFR-001. Component-level behaviour of the assign/transition flow the screens depend on.
 import { beforeEach, describe, expect, it } from "vitest";
-import { mockApi as api, resetMock } from "../src/services/api.mock";
+import { MOCK_STAFF_CODE, mockApi as api, resetMock } from "../src/services/api.mock";
 import type { User } from "../src/types";
 
 const staff: User = { id: "u2", name: "Sipho Staff", email: "s@x", role: "Staff", department: "Roads" };
 const sup: User = { id: "u3", name: "Sue Supervisor", email: "u@x", role: "Supervisor", department: "Roads" };
 const citizen: User = { id: "u1", name: "Thandi", email: "c@x", role: "Citizen" };
 beforeEach(() => resetMock());
+
+describe("FE-UT-03 staff sign-up (mock)", () => {
+  it("creates a Staff user with a department when the registration code is right", async () => {
+    const u = await api.registerStaff("New Staffer", "new.staff@x.test", "longenough1", "Water", MOCK_STAFF_CODE);
+    expect(u).toMatchObject({ role: "Staff", department: "Water", email: "new.staff@x.test" });
+    expect((await api.staff()).some(s => s.id === u.id)).toBe(true); // can now be assigned work
+  });
+  it("refuses a wrong code, a short password and a duplicate email (negative)", async () => {
+    await expect(api.registerStaff("New Staffer", "a@x.test", "longenough1", "Water", "nope")).rejects.toThrow(/code/i);
+    await expect(api.registerStaff("New Staffer", "b@x.test", "short", "Water", MOCK_STAFF_CODE)).rejects.toThrow(/8 characters/);
+    await expect(api.registerStaff("Dup", "staff@demo.test", "longenough1", "Water", MOCK_STAFF_CODE)).rejects.toThrow(/already exists/);
+  });
+});
 
 describe("FE-UT-02 assign and transition flow", () => {
   it("staff claims a Submitted request: becomes Assigned, audit and public timeline written", async () => {
