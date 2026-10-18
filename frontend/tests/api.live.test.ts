@@ -11,6 +11,7 @@ const send = (res: import("node:http").ServerResponse, code: number, json: unkno
 beforeAll(async () => {
   server = createServer(async (req, res) => {
     const raw = await readBody(req); seen.push({ url: req.url, method: req.method, auth: req.headers.authorization, body: raw ? JSON.parse(raw) : undefined });
+    if (req.url === "/api/v1/auth/register-staff") return send(res, 201, { token: "staff-tok", user: { id: "u9", name: "S", email: "s@x", role: "Staff", department: "Water" } });
     if (req.url === "/api/v1/auth/login") return send(res, 200, { token: "tok-123", user: { id: "u1", name: "T", email: "t@x", role: "Citizen" } });
     if (req.url?.endsWith("/status") && raw.includes("Closed")) return send(res, 422, { error: { code: "ILLEGAL_TRANSITION", message: "Transition not permitted", violations: ["Staff may not close.", "Second violation."] } });
     if (req.url?.endsWith("/status") && raw.includes("Stale")) return send(res, 409, { error: { code: "CONCURRENT_MODIFICATION", message: "x" } });
@@ -57,5 +58,11 @@ describe("FE-IT-01 live API client honours the contract", () => {
     await expect(liveApi.getRequest("expired-id")).rejects.toMatchObject({ status: 401 });
     expect(session.token()).toBeNull(); expect(fired).toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+  it("posts staff sign-up with the department and registration code, then stores the token", async () => {
+    const { liveApi } = await import("../src/services/api.live"); const { session } = await import("../src/services/http");
+    const user = await liveApi.registerStaff("S", "s@x", "longenough1", "Water", "CODE-1");
+    expect(user.role).toBe("Staff"); expect(session.token()).toBe("staff-tok");
+    expect(seen.at(-1)).toMatchObject({ method: "POST", url: "/api/v1/auth/register-staff", body: { fullName: "S", department: "Water", staffCode: "CODE-1" } });
   });
 });
