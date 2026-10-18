@@ -5,6 +5,8 @@ import { allowedNext, canAssign, guards, isFinal, isOverdue } from "./fsm";
 
 /** In-memory backend used for UI development and demos when VITE_API_MODE is not "live". */
 const SLA_HOURS: Record<Category, number> = { Roads: 72, Water: 24, Electricity: 24, Refuse: 48, Sanitation: 48 };
+/** Demo staff registration code for mock mode only. The real code is STAFF_REGISTRATION_CODE on the server. */
+export const MOCK_STAFF_CODE = "STAFF-DEMO";
 const hrs = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
 const USERS: User[] = [
   { id: "u1", name: "Thandi Citizen", email: "citizen@demo.test", role: "Citizen" },
@@ -42,6 +44,15 @@ export const mockApi: Api = {
     if (password.length < 8) throw new Error("Password must be at least 8 characters.");
     if (USERS.some(u => u.email === email.trim().toLowerCase())) throw new Error("An account with this email already exists.");
     const u: User = { id: `u${USERS.length + 1}`, name: name.trim(), email: email.trim().toLowerCase(), role: "Citizen" };
+    USERS.push(u); return delay(u);
+  },
+  async registerStaff(name, email, password, department, staffCode) {
+    if (staffCode.trim() !== MOCK_STAFF_CODE) throw new Error("The staff registration code is not valid.");
+    if (name.trim().length < 2) throw new Error("Enter your full name.");
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Enter a valid email address.");
+    if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+    if (USERS.some(u => u.email === email.trim().toLowerCase())) throw new Error("An account with this email already exists.");
+    const u: User = { id: `u${USERS.length + 1}`, name: name.trim(), email: email.trim().toLowerCase(), role: "Staff", department };
     USERS.push(u); return delay(u);
   },
   async createRequest(actor, d) {
