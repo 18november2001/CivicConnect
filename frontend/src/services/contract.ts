@@ -4,6 +4,7 @@ import type { Category, QueueFilters, RequestDraft, Result, ServiceRequest, Sort
 export interface Api {
   login(email: string, password: string): Promise<User>;
   register(name: string, email: string, password: string): Promise<User>;
+  registerStaff(name: string, email: string, password: string, department: Category, staffCode: string): Promise<User>;
   createRequest(actor: User, draft: RequestDraft & { category: Category }): Promise<ServiceRequest>;
   myRequests(actor: User, page: number, size: number): Promise<{ total: number; items: ServiceRequest[] }>;
   getRequest(id: string): Promise<ServiceRequest | null>;
