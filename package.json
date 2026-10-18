@@ -11,6 +11,8 @@
     "test:integration": "node --test --test-concurrency=1 tests/integration/*.test.js",
     "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.js",
     "perf": "node tests/performance/staffQueueLoad.js",
+    "dispatch": "node scripts/dispatch-messages.js",
+    "dispatch:watch": "node scripts/dispatch-messages.js --watch",
     "test:all": "npm test && npm run test:blackbox && npm run test:integration && npm run test:e2e",
     "test:fsm": "node runFsmTest.js",
     "test:extended": "node runExtendedTests.js"
