@@ -1,42 +1,37 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const { getJwtSecret } = require('../config/security');
+
+/** Error body shape shared by every endpoint: { error: { code, message, violations? } }. */
+function errorBody(code, message, violations) {
+  return { error: { code, message, ...(violations ? { violations } : {}) } };
+}
 
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Bearer token is required',
-    });
+    return res.status(401).json(errorBody('UNAUTHENTICATED', 'Bearer token is required'));
   }
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'civicconnect-dev-secret-key-32chars');
-    req.user = decoded;
-    next();
+    req.user = jwt.verify(token, getJwtSecret());
+    return next();
   } catch {
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Invalid or expired token',
-    });
+    return res.status(401).json(errorBody('UNAUTHENTICATED', 'Invalid or expired token'));
   }
 }
 
 function requireRoles(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Insufficient permissions for this action',
-      });
+      return res
+        .status(403)
+        .json(errorBody('FORBIDDEN', 'Insufficient permissions for this action'));
     }
-    next();
+    return next();
   };
 }
 
-module.exports = {
-  requireAuth,
-  requireRoles,
-};
+module.exports = { requireAuth, requireRoles, errorBody };
