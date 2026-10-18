@@ -141,3 +141,37 @@ jobs:
 
       - name: ESLint
         run: npm run lint
+
+  # Front end: type-check, unit tests (including the FSM parity test against
+  # src/domain/fsm/states.js) and a production build. Kept separate so a UI
+  # failure is distinguishable from a back-end failure.
+  frontend:
+    name: Front end checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Switch to `npm ci` plus `cache: npm` once frontend/package-lock.json is
+      # committed (run `npm install` in frontend/ and commit the lockfile).
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install --no-audit --no-fund
+
+      - name: Type-check
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build
