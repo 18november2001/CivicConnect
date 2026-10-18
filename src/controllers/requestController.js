@@ -1,5 +1,14 @@
 const db = require('../config/database');
 const { assertTransition } = require('../domain/fsm/requestStateMachine');
+const {
+  makeMessagingOutboxHandler,
+} = require('../integration/messaging/messagingOutboxHandler');
+
+// DEF-012. The outbox row must be written inside the same transaction as the
+// status change, so a rolled-back transition leaves no message queued. The
+// handler is the one the domain layer already uses; reusing it keeps one
+// message template and one idempotency key rule rather than two.
+const writeMessagingOutbox = makeMessagingOutboxHandler();
 
 function generateTrackingCode() {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -234,6 +243,19 @@ async function updateRequestStatus(req, res) {
         [id, nextStatus, publicMessage, actor.department || 'Municipal Operations']
       );
     }
+
+    const updatedRequest = updatedResult.rows[0];
+
+    await writeMessagingOutbox(
+      {
+        requestId: updatedRequest.request_id,
+        requesterId: updatedRequest.requester_id,
+        newStatus: nextStatus,
+        occurredAt: updatedRequest.updated_at,
+        trackingCode: updatedRequest.tracking_code,
+      },
+      client,
+    );
 
     await client.query('COMMIT');
     return res.status(200).json({
