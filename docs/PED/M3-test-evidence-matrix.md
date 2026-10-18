@@ -94,11 +94,12 @@ Evidence: Local Node.js coverage report.
 The following mappings are based on the CivicConnect
 Milestone 1 Requirements Traceability Matrix (RTM).
 
-| Requirement ID | Requirement area | Related unit tests | Verification status |
+| Requirement ID | Requirement area | Related tests / verification evidence | Verification status |
 |---|---|---|---|
 | FR-005 | Operational assignment and responsibility | UT-10 to UT-12 | Unit-level checks passed; full acceptance pending |
 | FR-006 | Controlled request lifecycle FSM | UT-08 to UT-22 | Unit-level checks passed; full acceptance pending |
 | NFR-005 | Testability and domain isolation | UT-01 to UT-22 | 22 unit tests passed; measured core FSM line coverage exceeds 80%; full scope verification pending |
+| NFR-006 | Code quality and maintainability | ESLint static analysis and cyclomatic complexity limit of 10 | Local and GitHub Actions checks passed in PR #31; full requirement verification pending |
 
 The messaging simulation tests UT-01 to UT-07
 provide supporting evidence for the messaging
@@ -123,10 +124,20 @@ must be completed and linked separately.
 - Pull Request #30
 - Unit-test source files in `tests/unit/`
 - Milestone 2 architecture baseline
+- Pull Request #31 – ESLint static code-quality checks and complexity enforcement
+- Pull Request #32 – Dependency security audit and remediation
 
 ## 7. Outstanding Test Evidence
 
 The team must still confirm and document the required black-box functional, API/integration and end-to-end/system tests.
 
 These 22 unit tests do not independently demonstrate that those other test categories have been completed.
+
+Additional verification is required to confirm:
+
+- Full functional acceptance of FR-005 and FR-006.
+- API/integration and end-to-end/system testing.
+- Architecture alignment between the implemented components and the approved Milestone 2 baseline.
+- Final traceability links to team-produced test evidence and defect records.
+- Required pull request approvals and merge evidence for PR #31 and PR #32.
 
