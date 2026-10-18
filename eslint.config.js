@@ -16,7 +16,7 @@
 module.exports = [
   {
     files: ['**/*.js'],
-    ignores: ['node_modules/**'],
+    ignores: ['**/node_modules/**', 'frontend/dist/**', 'coverage/**'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'commonjs',
