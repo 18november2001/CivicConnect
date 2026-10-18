@@ -1,28 +1,27 @@
-'use strict';
-
 const express = require('express');
+const cors = require('cors');
 const requestRoutes = require('./routes/requestRoutes');
+const staffRoutes = require('./routes/staffRoutes');
 const authRoutes = require('./routes/authRoutes');
 const errorHandler = require('./middleware/errorHandler');
-
+ 
 const app = express();
-
+ 
+app.use(cors());
 app.use(express.json());
-
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
-});
-
-
-app.use('/api/v1/requests', requestRoutes);
+ 
+// Auth
 app.use('/api/v1/auth', authRoutes);
-
-
+ 
+// Citizen routes
+app.use('/api/v1/requester', requestRoutes);
+app.use('/api/v1/requests', requestRoutes);
+ 
+// Municipal / Staff routes
+app.use('/api/v1/staff', staffRoutes);
+app.use('/api/v1/admin', staffRoutes);
+ 
 app.use(errorHandler);
-
-
-app.use((req, res) => {
-  res.status(404).json({ error: 'Resource not found' });
-});
-
+ 
 module.exports = app;
+ 
