@@ -1,5 +1,5 @@
 'use strict';
-
+ 
 /**
  * Static analysis configuration for CivicConnect.
  *
@@ -12,21 +12,29 @@
  *
  * This configuration found DEF-005 on its first run.
  */
-
+ 
 module.exports = [
+  // Global ignore patterns across all files
   {
-    files: ['**/*.js'],
     ignores: [
-      'node_modules/**',
+      '**/node_modules/**',
+      'frontend/dist/**',
+      'coverage/**',
       'testLiveApi.js',
       'creteStuff.js',
+      'createStaff.js',
       'checkRole.js',
       'checkSchema.js',
       'runSchema.js',
       'fixPassword.js',
       'InitAndSeedDb.JS',
+      'InitAndSeedDb.js',
       'testRollbackIntegrity.js'
-    ],
+    ]
+  },
+  // Rules and environment for JavaScript source files
+  {
+    files: ['**/*.js'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'commonjs',
@@ -69,3 +77,4 @@ module.exports = [
     }
   }
 ];
+ 
