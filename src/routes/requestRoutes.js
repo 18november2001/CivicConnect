@@ -421,7 +421,7 @@ router.get('/:id', asyncHandler(async (req, res, next) => {
   }
 }));
 
-router.patch('/:id/assign', staffOnly, asyncHandler(async (req, res, next) => {
+router.patch('/:id/assign', staffOnly, asyncHandler(async (req, res, _next) => {
   try {
     const { id } = req.params;
 
@@ -516,12 +516,12 @@ router.patch('/:id/assign', staffOnly, asyncHandler(async (req, res, next) => {
   }
 }));
 
-router.patch('/:id/status', staffOnly, asyncHandler(async (req, res, next) => {
+router.patch('/:id/status', staffOnly, asyncHandler(async (req, res, _next) => {
   try {
     const { id } = req.params;
-    let { status, to, note, resolution_notes, rejection_reason } = req.body;
+    const { status, to, note, resolution_notes, rejection_reason } = req.body;
 
-    let target = (status || to || '').toString().trim();
+    const target = (status || to || '').toString().trim();
     let dbStatus = 'In_Progress';
 
     if (target === 'Reject' || target === 'Rejected') {
