@@ -1,22 +1,21 @@
 'use strict';
- 
+
 const express = require('express');
 const router = express.Router();
 const db = require('../config/Database');
- 
-// 1. Auth & role middleware fallbacks
+
 let authMiddleware = {};
 try {
   authMiddleware = require('../middleware/auth');
 } catch (e) {
   console.warn('Warning: auth middleware failed to load in staffRoutes', e.message);
 }
- 
+
 const requireAuth =
   authMiddleware.requireAuth ||
   authMiddleware.authenticateToken ||
   ((req, res, next) => next());
- 
+
 const requireRoles = (...allowed) => {
   if (typeof authMiddleware.requireRoles === 'function') {
     return authMiddleware.requireRoles(...allowed);
@@ -32,10 +31,9 @@ const requireRoles = (...allowed) => {
     next();
   };
 };
- 
+
 const staffOnly = requireRoles('Staff', 'Supervisor', 'Admin');
- 
-// 2. Safe async wrapper
+
 const asyncHandler = (fn) => {
   if (typeof fn !== 'function') {
     return (req, res, next) => next();
@@ -44,8 +42,7 @@ const asyncHandler = (fn) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 };
- 
-// 3. Fallback handlers directly from the database if controller functions are missing
+
 async function handleListStaff(req, res, next) {
   try {
     const result = await db.query(
@@ -62,20 +59,17 @@ async function handleListStaff(req, res, next) {
     next(err);
   }
 }
- 
-// 4. Try loading controller functions if they exist
+
 let staffController = {};
 try {
   staffController = require('../controllers/staffController');
 } catch {
   staffController = {};
 }
- 
-// Guard all staff routes
+
 router.use(requireAuth);
 router.use(staffOnly);
- 
-// Route definition with fallback to avoid passing undefined
+
 router.get(
   '/',
   asyncHandler(
@@ -84,10 +78,9 @@ router.get(
       : (typeof staffController.getStaff === 'function' ? staffController.getStaff : handleListStaff)
   )
 );
- 
+
 if (typeof staffController.getStaffById === 'function') {
   router.get('/:id', asyncHandler(staffController.getStaffById));
 }
- 
+
 module.exports = router;
- 

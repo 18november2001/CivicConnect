@@ -1,28 +1,27 @@
 'use strict';
- 
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/Database');
- 
+
 const JWT_SECRET = process.env.JWT_SECRET || 'civic-connect-super-secret-key-2026';
- 
-// Helper: formats database role to frontend expected format
+
 const formatUser = (user) => ({
   id: user.user_id,
   name: user.full_name,
   email: user.email,
-  role: user.role.toLowerCase() // 'citizen' | 'staff' | 'supervisor' | 'admin'
+  role: user.role.toLowerCase()
 });
- 
+
 // POST /api/v1/auth/register
 router.post('/register', async (req, res, next) => {
   try {
     const { fullName, name, email, password } = req.body;
     const displayName = (fullName || name || '').trim();
     const cleanEmail = (email || '').trim().toLowerCase();
- 
+
     if (!displayName || !cleanEmail || !password) {
       return res.status(400).json({
         error: {
@@ -31,8 +30,7 @@ router.post('/register', async (req, res, next) => {
         }
       });
     }
- 
-    // 1. Check if user already exists
+
     const existing = await db.query(
       'SELECT user_id FROM users WHERE LOWER(email) = $1',
       [cleanEmail]
@@ -45,12 +43,10 @@ router.post('/register', async (req, res, next) => {
         }
       });
     }
- 
-    // 2. Hash password with bcryptjs
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
- 
-    // 3. Insert user using exact DB CHECK constraint role: 'Citizen'
+
     const insertQuery = `
       INSERT INTO users (full_name, email, password_hash, role)
       VALUES ($1, $2, $3, 'Citizen')
@@ -58,8 +54,7 @@ router.post('/register', async (req, res, next) => {
     `;
     const result = await db.query(insertQuery, [displayName, cleanEmail, passwordHash]);
     const safeUser = formatUser(result.rows[0]);
- 
-    // 4. Generate JWT
+
     const token = jwt.sign(
       {
         id: safeUser.id,
@@ -70,7 +65,7 @@ router.post('/register', async (req, res, next) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
- 
+
     return res.status(201).json({
       token,
       user: safeUser
@@ -79,17 +74,15 @@ router.post('/register', async (req, res, next) => {
     next(err);
   }
 });
- 
+
 // POST /api/v1/auth/register-staff
 router.post('/register-staff', async (req, res, next) => {
   try {
     const { fullName, name, email, password, role } = req.body;
     const displayName = (fullName || name || '').trim();
     const cleanEmail = (email || '').trim().toLowerCase();
- 
-    // Default to 'Staff' or 'Admin' based on database CHECK constraint
     const targetRole = role && role.toLowerCase() === 'admin' ? 'Admin' : 'Staff';
- 
+
     if (!displayName || !cleanEmail || !password) {
       return res.status(400).json({
         error: {
@@ -98,7 +91,7 @@ router.post('/register-staff', async (req, res, next) => {
         }
       });
     }
- 
+
     const existing = await db.query(
       'SELECT user_id FROM users WHERE LOWER(email) = $1',
       [cleanEmail]
@@ -111,10 +104,10 @@ router.post('/register-staff', async (req, res, next) => {
         }
       });
     }
- 
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
- 
+
     const insertQuery = `
       INSERT INTO users (full_name, email, password_hash, role)
       VALUES ($1, $2, $3, $4)
@@ -122,7 +115,7 @@ router.post('/register-staff', async (req, res, next) => {
     `;
     const result = await db.query(insertQuery, [displayName, cleanEmail, passwordHash, targetRole]);
     const safeUser = formatUser(result.rows[0]);
- 
+
     const token = jwt.sign(
       {
         id: safeUser.id,
@@ -133,7 +126,7 @@ router.post('/register-staff', async (req, res, next) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
- 
+
     return res.status(201).json({
       token,
       user: safeUser
@@ -142,13 +135,13 @@ router.post('/register-staff', async (req, res, next) => {
     next(err);
   }
 });
- 
+
 // POST /api/v1/auth/login
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
- 
+
     if (!cleanEmail || !password) {
       return res.status(400).json({
         error: {
@@ -157,12 +150,12 @@ router.post('/login', async (req, res, next) => {
         }
       });
     }
- 
+
     const result = await db.query(
       'SELECT user_id, full_name, email, password_hash, role FROM users WHERE LOWER(email) = $1',
       [cleanEmail]
     );
- 
+
     if (result.rows.length === 0) {
       return res.status(401).json({
         error: {
@@ -171,9 +164,8 @@ router.post('/login', async (req, res, next) => {
         }
       });
     }
- 
+
     const user = result.rows[0];
- 
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({
@@ -183,9 +175,8 @@ router.post('/login', async (req, res, next) => {
         }
       });
     }
- 
+
     const safeUser = formatUser(user);
- 
     const token = jwt.sign(
       {
         id: safeUser.id,
@@ -196,7 +187,7 @@ router.post('/login', async (req, res, next) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
- 
+
     return res.status(200).json({
       token,
       user: safeUser
@@ -205,6 +196,5 @@ router.post('/login', async (req, res, next) => {
     next(err);
   }
 });
- 
+
 module.exports = router;
- 

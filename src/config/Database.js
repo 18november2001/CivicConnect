@@ -1,3 +1,5 @@
+'use strict';
+
 const { Pool } = require('pg');
 require('dotenv').config();
 
